@@ -1,0 +1,23 @@
+baseURL = 'https://dearfortuna.blog/'
+title = 'Dear Fortuna'
+theme = "hugo-bearcub"
+copyright = "© 2025 Vasyl Bodnar | Text: CC BY 4.0 | Code: BSD-3"
+defaultContentLanguage = "en"
+
+enableRobotsTXT = true
+
+[languages]
+  [languages.en]
+    languageName = "en-US"
+    LanguageCode = "en-US"
+    contentDir = "content"
+    [languages.en.params]
+      madeWith = "Made with [Bear Cub](https://github.com/clente/hugo-bearcub)"
+
+[params]
+    favicon = "images/favicon-32x32.png"
+
+    themeStyle = "original"
+
+    [params.author]
+        name = "Vasyl Bodnar"

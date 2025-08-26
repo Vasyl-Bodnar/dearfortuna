@@ -21,3 +21,7 @@ enableRobotsTXT = true
 
     [params.author]
         name = "Vasyl Bodnar"
+
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'

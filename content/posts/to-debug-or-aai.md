@@ -159,7 +159,7 @@ it just sends the packets as it is supposed to and ends the program.
 Those packets are not correct and 
 the other end kindly lets me know it did not like what it had to receive.
 
-Corrupts data in some other ways (`max_size` is probably not on the stack anymore).
+Data is probably corrupted in some other ways (`max_size` is probably not on the stack anymore).
 Thankfully fixing it (i.e. using `sizeof(pack->packet.payload)` in `max_size`) 
 makes it run perfectly on either build.
 At least as far as I am aware and that is good enough for prod (i.e. me).
@@ -177,9 +177,9 @@ Now I am not a vibe coder nor do I condone such violence upon the computer.
 And I would not really say I use all that much AI tooling (certainly not the latest and greatest).
 Still, I find it useful to occasionally indulge in these simple chatbots that most people would use. 
 
-Brainstorming, summarizig, finding, maybe even being of help in debugging sometimes?
+Brainstorming, summarizing, finding info, maybe even being of help in debugging sometimes?
 
-So I run some basic tests, will it (GPT-5, Claude Son 4) find this bug?
+So I shall run some basic tests, will it (GPT-5, Claude Son 4) find this bug?
 
 ### Tests for tests's sake
 First the basic basic, copy and paste the entire file (~300 LOC).
@@ -209,7 +209,7 @@ GPT-5 did not even compete too, it has ignored that entirely.
 I had repeated trials, but given the kinds of "memory" chatbots may use, 
 I am skeptical of how useful that would be.
 
-Another test I prepared was feeding it just the essentials, 
+Another test I prepared was feeding it just the essentials:
 the structs, the `send_pack`, and the `send_data`, all you need. Same question. 
 (Yes, could be this mystical "memory", but it is not the exact same code at least)
 
@@ -217,7 +217,7 @@ GPT-5 is doing the same as it did before.
 
 Son 4 is still obsessed with offsets, but it has the right idea about it being `sizeof(payload)`.
 Except that for some reasons it excluded `ABYTES`, authentication bytes,
-those should count given that they are appended to the payload (i.e. in it)?
+which should count given that they are appended to the payload (i.e. in it)?
 
 Ok, last test, what if I introduce it piecemeal. 
 

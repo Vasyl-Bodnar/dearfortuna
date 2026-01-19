@@ -36,14 +36,14 @@ Hashtable, obviously. Very simple too, just a get and a put in a loop.
 C does not have a hashtable natively. 
 Leetcode apparently provides [uthash](https://support.leetcode.com/hc/en-us/articles/360011833974-What-are-the-environments-for-the-programming-languages), 
 though I had never seen it in a wild (becomes obvious why when you see the ergonomics).
-There is also the libc [hash table](https://linux.die.net/man/3/hsearch), but that is just one of POSIX April Fools joke.
+There is also the libc [hash table](https://linux.die.net/man/3/hsearch), but that is just one of POSIX April Fools jokes.
 
 Anyway, I implemented one recently while testing out my C build system (Guile script, nothing too fancy, though it does cache).
 It even has SSE2 SIMD and 64bit SWAR (SIMD Within A Register). 
 So I thought it would be good practice to do another one, and it very much was in hindsight.
 
 ## Spec matters
-Got, good-old-table as I called it, based itself on Abseil SwissTable.
+`got`, good-old-table as I called it, based itself on Abseil SwissTable.
 Except I tried to avoid just reimplementing someone's solution. I only read an overview and skimped on the details.
 It sounded simple enough.
 
@@ -163,7 +163,7 @@ I will include the (incomplete) table here anyway to avoid spoilers:
 | awful.c    | 8292 ms | 1893 ms    |
 
 `fine.c` is the good solution, `awful.c` is the original bad solution. 
-There is also `fine.cpp` which uses `unordered_map` and `with_got.c` which uses my got library.
+There is also `fine.cpp` which uses `unordered_map` and `with_got.c` which uses my `got` library.
 
 The only test case I used was the one I timed out on. 
 Thus, this table is a little useless to compare my table and `unordered_map` in my opinion.
@@ -210,10 +210,14 @@ E.g. if anything hashes to the end of the array that would always force a resize
 Still, I am satisfied with getting 2ms for now.
 
 ## What did we learn
-I should go fix my got library. 
+I should go fix my `got` library. 
 I call it not too serious, but I cannot allow this level of underperfomance.
 
 The main lesson would probably be an importance of assumptions.
 If you take in wrong or expensive assumptions, you may suffer.
 On the other hand, if you take in correct assumptions, you can benefit a lot from it.
 This often involves a tradeoff with generality like what I did for `best.c`, but other kinds exist too.
+
+Update: `got` library should now be fixed (for now, before more bad assumption show up). 
+I updated the repo by adding the (new) version, it is roughly on par with `unordered_map` there. 
+Though, as I said, comparing hash tables based on one testcase and only on sorted integers is not a good idea.

@@ -1,7 +1,7 @@
 baseURL = 'https://dearfortuna.blog/'
 title = 'Dear Fortuna'
 theme = "hugo-bearcub"
-copyright = "© 2025 Vasyl Bodnar | Text: CC BY 4.0 | Code: BSD-3"
+copyright = "© 2026 Vasyl Bodnar | Text: CC BY 4.0 | Code: BSD-3"
 defaultContentLanguage = "en"
 
 enableRobotsTXT = true

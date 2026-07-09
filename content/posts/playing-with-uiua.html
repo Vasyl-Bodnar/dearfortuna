@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>playing-with-uiua.html</title>
+<meta http-equiv="Content-Type" content="application/xhtml+xml;charset=utf-8"/>
+<link rel="stylesheet" type="text/css" media="all" href="https://cdn.jsdelivr.net/npm/github-markdown-css/github-markdown.min.css"  />
+<link rel="stylesheet" type="text/css" media="all" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/styles/github.min.css"  /><meta name='viewport' content='width=device-width, initial-scale=1, shrink-to-fit=no'><style> body { box-sizing: border-box; max-width: 740px; width: 100%; margin: 40px auto; padding: 0 10px; } </style><script id='MathJax-script' async src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'></script><script src='https://cdn.jsdelivr.net/gh/highlightjs/cdn-release/build/highlight.min.js'></script><script>document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('markdown-body'); document.querySelectorAll('pre[lang] > code').forEach((code) => { code.classList.add(code.parentElement.lang); }); document.querySelectorAll('pre > code').forEach((code) => { hljs.highlightBlock(code); }); });</script>
+</head>
+
+<body>
+
+<p>+++ author = “V” title = “Playing with Uiua for Optimal Mindustry
+Mining” date = “2026-07-08T18:00:00-04:00” description = “Using Uiua for
+some minor problems I have in Mindustry.” tags = [“Uiua”, “Dynamic
+Programming”, “Mindustry”] style = “custom.css” draft = true +++</p>
+<h2 id="intro">Intro</h2>
+<p>I happened to be playing <a
+href="https://mindustrygame.github.io">Mindustry</a> one evening. But I
+kept getting annoyed by a minor issue, my drills and mining are probably
+suboptimal.</p>
+<figure>
+<img src="/images/mindustry-drills.jpg"
+alt="Picture of resources in Mindustry with a small drill over a few tiles of them" />
+<figcaption aria-hidden="true">Picture of resources in Mindustry with a
+small drill over a few tiles of them</figcaption>
+</figure>
+<p>If you can see the picture and can understand it, the drills cover
+2x2 tiles, whereas the resources are a large uneven cluster. It is
+unfortunately an innate and natural desire to make those drills cover
+all possible resources you can get. Thankfully, I have an outlet for
+such unrefined desires in my life. I could just make an optimal
+algorithm for it.</p>
+<h2 id="the-question-to-ask">The Question to Ask</h2>
+<p>First we need to state the problem properly so that the algorithm can
+be well-defined. This is generally an easy problem to state, especially
+if we ignore some extra details (cluster overlap, the big problem).</p>
+<p>We have a matrix of ones and zeros as an input, e.g. A is</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="dv">0</span> <span class="dv">1</span> <span class="dv">1</span> <span class="dv">0</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dv">1</span> <span class="dv">1</span> <span class="dv">1</span> <span class="dv">1</span> </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dv">0</span> <span class="dv">1</span> <span class="dv">1</span> <span class="dv">0</span></span></code></pre></div>
+<p>Then, we must return the optimal packing (i.e. maximum ones covered
+for our purposes) of non-overlaping 2x2 squares, result would be
+e.g.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode c"><code class="sourceCode c"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>a a b b</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>a a b b</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="op">-</span> <span class="op">-</span> <span class="op">-</span> <span class="op">-</span></span></code></pre></div>
+<p>Where a is one square, b is another square, and dashes are a waste
+and my tears.</p>
+<h2 id="easy-enough">Easy Enough</h2>
+<p>At first I thought about solving this problem in Scheme, but given
+that it would involve matrices, I felt that it is time to learn Uiua.
+And I felt that a good start in uiua would be <code>⧈∘2_2</code></p>
+<h2 id="the-first-hurdle-passed">The First Hurdle Passed</h2>
+<p>Barely any work and we get a beautiful terse uiua result.</p>
+<pre class="uiua"><code>+1 1_1_1</code></pre>
+<p>You can see, run, and play with the code <a href="">here in the Uiua
+online interpreter</a>.</p>
+<p>One problem though</p>
+
+</body>
+</html>

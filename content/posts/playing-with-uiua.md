@@ -5,7 +5,7 @@ date = "2026-07-08T18:00:00-04:00"
 description = "Using Uiua for some minor problems I have in Mindustry, the first part with Maximum Weight Independent Set"
 tags = ["Uiua", "Dynamic Programming", "Mindustry"]
 style = "custom.css"
-draft = true
+draft = false
 +++
 
 ## Intro

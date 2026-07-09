@@ -25,7 +25,7 @@ First, we need to state the problem properly so that the algorithm can be well-d
 This is generally an easy problem to state, especially so, as long as we ignore some extra minor details 
 (clusters can overlap, the big problem). 
 
-We have a matrix of ones and zeros as an input, e.g. A is
+We have a matrix of ones and zeros as an input, A is e.g.
 ```
 0 1 1 0 
 1 1 1 1 
@@ -41,7 +41,7 @@ Where a is one square, b is another square, and dashes are a waste and my tears.
 
 ## Easy Enough
 At first, I thought about solving this problem in Scheme, 
-but given all the matrices, I felt that it was to learn Uiua. 
+but given all the matrices, I felt that it was time to learn Uiua. 
 By the way, while I do use Uiua386 font for this page, 
 if you forbid page fonts or do not have it for whatever other reasons, 
 the glyphs might look off if they exist at all. No pretty colors though, see the online interpreter for that.
@@ -53,7 +53,7 @@ There is a good tutorial on the official website.
 Anyway, I felt that a good start in Uiua would be `⧈∘2_2`. 
 This produces 2×2 windows/squares over the matrix (it is `stencil identity [2 2]` if you want names and a more common array notation).
 Exactly what we need.
-Using the example matrix we would get:
+Using the example matrix we would get a new matrix:
 ```
 0 1  1 1  1 0
 1 1  1 1  1 1
@@ -73,10 +73,10 @@ Prep ← ◴⊸⊚ ≡₂(/+/+) ⧈∘2_2
 ```
 `Prep ←` is just binding to a variable.
 Uiua is a stack language like Forth so right-to-left is a more proper reading order.
-Our windows part is to the right. 
-Next we reduce with plus `/+` over second rank (using `≡` with `₂`), i.e. the matrix, not rows. 
+Our windows part is to the right. Note that it is a 2×3×2×2 matrix.
+As such, we reduce with plus `/+` over second rank (using `≡` with `₂`), i.e. the 2×2 matrices inside the 2×3 matrix. 
+If we did not use `≡` (`rows`) it would be 2 rows of squares, the default rank for reduce and most Uiua functions.
 Because we use 2×2 matrices, we need to reduce twice to first combine rows and then the columns.
-Note that `≡` is necessary because many Uiua functions by default apply to every element/row, which is not what we want here.
 Finally, we run the last part where we get coordinates to non-zero squares, and deduplicate them. 
 
 One of the more interesting parts is the `⊸`, which preserves the argument and puts it to the right of the output. 
@@ -97,7 +97,7 @@ Two matrices on the stack with fancy formatting. Again it is a stack language.
 ## Recursion is Ill-Advised
 I thought of a top-down dynamic programming solution, not the fastest but it is optimal.
 Yet, the Uiua docs seem to say Uiua is not good with recursion.
-Conflictingly, Uiua also has `memo`, which memoizes the calls to a function (could be a combination of functions though).
+Conflictingly, Uiua also has `memo`, which memoizes the calls to a function (or combinations thereof).
 We shall proceed.
 
 The core idea would be to use the coordinates as a visit list.
@@ -112,7 +112,7 @@ Dyn ← |2 memo⍣(
   ⊢
 | 0)
 ```
-`|2` is just signature for how many arguments we take, `memo` is memoize, and so we are left with `⍣`.
+`|2` is just a signature for how many arguments we take, `memo` is memoize, and so we are left with `⍣`.
 This is `try`, pattern matching by failing. 
 There are ways to avoid it and prettier tricks, but to pattern match we genuinely throw an error. 
 In this case, `⊢` is `first`, that is, it takes the first element of the array. 
@@ -125,9 +125,9 @@ Next, we extend our recursive case
 For the first `⊸⊢`, as before, 
 that `⊸` preserves the argument on the right, 
 so we can do `⊢` while still having our coordinates after.
-Next, subtract on each row, the `₁` tells us it is for a vector, i.e. 1-D.
-If you ask "subtract what?", you haven't been listening.
-We already have our first coordinate and we have a list of coordinates, thus we subtract one from every other.
+Next, subtract on each row, the `₁` tells us it is for a vector, we skip a dimension.
+It is not easy to follow the stack if you never used Forth, but think about what is on the stack before subtract.
+We already have our first coordinate and we have a list of coordinates, thus we map subtract the chosen coordinate from every other.
 We reach `˜◡`, which preserves all arguments to the previous function. 
 We do so `backward` as you can see from `˜`, which is necessary to keep our values in correct order.
 Finally, we do `⌵`, which is just absolute value in case our subtraction left negatives.
@@ -143,7 +143,7 @@ Back to the stack after this operation:
   1 2      1 2
       ╯        ╯
 ```
-In this case, since we subtracted [0 0], most of those did not matter.
+In this case, since we subtracted [0 0], most of those operations did not matter, they would in deeper cases though.
 
 Next step is more fun:
 ```uiua

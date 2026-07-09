@@ -1,0 +1,11 @@
+@font-face {
+    font-family: 'Uiua386';
+    src: url('/fonts/Uiua386.ttf') format('TrueType');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+pre, code, kbd, samp {
+    font-family: 'Uiua386', monospace !important;
+}

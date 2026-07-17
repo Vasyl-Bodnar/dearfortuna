@@ -242,6 +242,23 @@ It is not identical, differing in a few ways (e.g. we have `ge` rather than `>` 
 `part` is now a separate but mutually recursive function too.
 Nevertheless, the form is much the same.
 
+Then, I shall introduce a snippet of the benchmark for just these functions with input size=10000 and input type=Random:
+| Algorithm                   | Mean      | StdDev    | Err      |
+|-----------------------------|-----------|-----------|----------|
+| Basic mergesort             | 116.25 ms | 21.98 ms  | 98.31 ms |
+| Bottom-up mergesort         | 109.15 ms | 39.29 ms  | 17.57 ms |
+| Natural bottom-up mergesort | 144.47 ms | 116.08 ms | 51.91 ms |
+| Bad quicksort               | 112.90 ms | 10.56 ms  | 4.72 ms  |
+| Partition quicksort         | 121.13 ms | 63.06 ms  | 28.20 ms |
+| Good accumulator quicksort  | 68.81 ms  | 35.90 ms  | 16.06 ms |
+[](TODO:DISCARD.THESE.THEY.WERE.UNDER.SYSLOAD)
+
+As you can see, on fully random input and on a somewhat large input size,
+I was able to get a quicksort solution to be twice the speed.
+Even the partition version is faster than mergesort.
+This is a small sample size however, and indeed running it multiple times can lead to significant differences in results.
+Some of the standard deviations tell you just how much it could vary.
+
 [^1]: Ignoring the Powerbook since all kinds of devices are used nowadays, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of merge sort GHC had in that version, and it seemed to be a simple bottom up solution without natural runs.
 These days, GHC has a beefy 4-way bottom-up merge sort with natural runs, not to mention many optimizations in the compiler itself since then.

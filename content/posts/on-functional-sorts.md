@@ -131,7 +131,7 @@ fun sort _ [] = []
 Merge part can remain, but our splitting step is now much nicer, at the cost of code size.
 In some ways this is even more indicative of the "real" functional programming with maps and bunch of functions.
 Now this is a more proper merge sort. Still `O(nlogn)`, but now we don't have to do as much work. [](TODO:.RIGHT.VS.LEFT.FOLDS)
-Still, we can do better with a "natural" optimization:
+We can do better with a "natural" optimization though:
 ```sml
 fun extractAsc ge [] = ([], [])
   | extractAsc ge [x] = ([x], [])
@@ -196,7 +196,7 @@ fun sort _ [] = []
     end
 ```
 There are slight differences, but nothing serious.
-We can move on to the simple improvements:
+We can move on to the improvements:
 ```sml
 fun sort _ [] = []
   | sort _ [x] = [x]
@@ -242,23 +242,103 @@ It is not identical, differing in a few ways (e.g. we have `ge` rather than `>` 
 `part` is now a separate but mutually recursive function too.
 Nevertheless, the form is much the same.
 
-Then, I shall introduce a snippet of the benchmark for just these functions with input size=10000 and input type=Random:
+Then, I shall introduce a snippet of the benchmark for just these functions with random int list of n=10000:
+| Algorithm                   | Mean    | StdDev  | Err     |
+|-----------------------------|---------|---------|---------|
+| Basic mergesort             | 2.43 ms | 0.75 ms | 0.33 ms |
+| Bottom-up mergesort         | 2.18 ms | 1.03 ms | 0.46 ms |
+| Natural bottom-up mergesort | 2.60 ms | 0.38 ms | 0.17 ms |
+| Bad quicksort               | 3.25 ms | 0.16 ms | 0.07 ms |
+| Partition quicksort         | 2.70 ms | 0.38 ms | 0.17 ms |
+| Accumulator quicksort       | 1.64 ms | 0.30 ms | 0.13 ms |
+
+This is time, so lower is better. 
+As you can see, on fully random input and on a somewhat large input size,
+I was able to get a quicksort to outperform mergesort just like in the article!
+Even the partition version is comparably fast.
+However, this is the best-case scenario for quicksort, because if input is sorted:
+| Algorithm                   | Mean      | StdDev    | Err       |
+|-----------------------------|-----------|-----------|-----------|
+| Basic mergesort             | 1.96 ms   | 0.56 ms   | 0.25 ms   |
+| Bottom-up mergesort         | 1.71 ms   | 0.40 ms   | 0.18 ms   |
+| Natural bottom-up mergesort | 0.18 ms   | 0.04 ms   | 0.02 ms   |
+| Bad quicksort               | 997.12 ms | 244.28 ms | 109.24 ms |
+| Partition quicksort         | 775.36 ms | 57.45 ms  | 25.71 ms  |
+| Accumulator quicksort       | 345.93 ms | 25.49 ms  | 11.40 ms  |
+
+The bad version is taking nearly a second on the input of mere 10000 elements.
+Even the accumulator version, which easily beats mergesort on random input, is two orders worse now.
+You might be able to see the issue with "functional" quicksort.
+You can also see the benefit of the natural version. 
+Performance is up by an order for the sorted input, 
+whereas the cost on the random input is not as high.
+
+### Arrays?
+What if we instead try the quicksort array solution:
+```sml
+fun part ge arr lo hi =
+    let val p = Array.sub (arr, (hi + lo) div 2)
+        val lo = ref (lo - 1)
+        val hi = ref (hi + 1)
+        val ret = ref true
+    in while !ret do (
+            lo := !lo + 1;
+            while not (ge (Array.sub (arr, !lo), p)) do
+                  lo := !lo + 1;
+            hi := !hi - 1;
+            while not (ge (p, Array.sub (arr, !hi))) do
+                  hi := !hi - 1;
+            if !lo >= !hi then
+                ret := false
+            else
+                let val l = Array.sub (arr, !lo)
+                    val h = Array.sub (arr, !hi)
+                in
+                    Array.update (arr, !lo, h);
+                    Array.update (arr, !hi, l)
+                end
+        );
+       !hi
+    end
+
+fun qsort ge arr lo hi =
+    if lo >= hi orelse lo < 0 orelse hi < 0 then ()
+    else
+        let val p = part ge arr lo hi
+        in
+            qsort ge arr lo p;
+            qsort ge arr (p + 1) hi
+        end
+
+fun sort ge arr = qsort ge arr 0 (Array.length arr - 1)
+```
+This is the Hoare's solution, though note that the pivot is the middle element.
+While it would be more fair to keep pivot to the first element like in the functional quicksorts,
+the ability to pick the middle element is exactly the big difference between them.
+Middle element with linked lists is O(n) and with arrays O(1).
+Although, you might be surprised with random input (still n=10000):
+| Algorithm                   | Mean    | StdDev  | Err     |
+|-----------------------------|---------|---------|---------|
+| Natural bottom-up mergesort | 5.32 ms | 1.47 ms | 6.55 ms |
+| Accumulator quicksort       | 2.85 ms | 1.10 ms | 0.90 ms |
+| Array quicksort             | 0.95 ms | 0.04 ms | 0.02 ms |
+
+Naturally, it is nearly three times faster than the accumulator version. 
+However, I expected a much larger difference. 
+These are arrays vs linked lists need I remind you.
+Not sure what PolyML does in the background though.
+Regardless, the key difference can be seen in the sorted input:
 | Algorithm                   | Mean      | StdDev    | Err      |
 |-----------------------------|-----------|-----------|----------|
-| Basic mergesort             | 116.25 ms | 21.98 ms  | 98.31 ms |
-| Bottom-up mergesort         | 109.15 ms | 39.29 ms  | 17.57 ms |
-| Natural bottom-up mergesort | 144.47 ms | 116.08 ms | 51.91 ms |
-| Bad quicksort               | 112.90 ms | 10.56 ms  | 4.72 ms  |
-| Partition quicksort         | 121.13 ms | 63.06 ms  | 28.20 ms |
-| Good accumulator quicksort  | 68.81 ms  | 35.90 ms  | 16.06 ms |
-[](TODO:DISCARD.THESE.THEY.WERE.UNDER.SYSLOAD)
+| Natural bottom-up mergesort | 0.20 ms   | 0.05 ms   | 0.02 ms  |
+| Accumulator quicksort       | 396.53 ms | 106.47 ms | 47.62 ms |
+| Array quicksort             | 0.86 ms   | 0.04 ms   | 0.02 ms  |
 
-As you can see, on fully random input and on a somewhat large input size,
-I was able to get a quicksort solution to be twice the speed.
-Even the partition version is faster than mergesort.
-This is a small sample size however, and indeed running it multiple times can lead to significant differences in results.
-Some of the standard deviations tell you just how much it could vary.
+With the middle pivot choice, array quicksort on sorted input is even slightly better than on random.
+Accumulator quicksort cannot begin to compare. 
+You can also see the benefit of the natural mergesort again, four times faster than the array version.
+Doing barely any work on lists is better than doing lots on arrays after all.
 
-[^1]: Ignoring the Powerbook since all kinds of devices are used nowadays, the GHC version was 6.4.1, released September 19 2005.
+[^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of merge sort GHC had in that version, and it seemed to be a simple bottom up solution without natural runs.
 These days, GHC has a beefy 4-way bottom-up merge sort with natural runs, not to mention many optimizations in the compiler itself since then.

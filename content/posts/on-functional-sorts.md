@@ -35,10 +35,10 @@ fun sort _ [] = []
   | sort ge xs = merge ge ((fn (xs, ys) => (sort ge xs, sort ge ys))
                                (splitAt xs ((List.length xs) div 2)))
 ```
-This is adapted from a simple solution I found online, the key parts is, of course, this being a mergesort,
+This is adapted from a simple solution I found online, the key parts is, of course, this being a merge-sort,
 and that it uses `splitAt`, another not standard function. This one is even easier to implement though.
 Most importantly, it sorts, and it sorts fine enough. 
-My current usecase is a couple of tiny lists that I sort once.
+My current use case is a couple of tiny lists that I sort once.
 Really, even a best-case `O(n^3)` cubic sorting algorithm would work great. 
 Hell, even the shuffle and pray of bogosort would work fine. 
 
@@ -56,13 +56,13 @@ Well there is a long list of `sort`s to consider, but I will keep to a couple of
 - Selection sort, for being `O(n^2)`
 - Bubble sort, for being known
 - Radix sort, for lack of comparisons
-- Slowsort and bogosort, to have a terrific baseline
+- Slow sort and bogosort, to have a terrific baseline
 
 I will exclude e.g. Bucket sort and others that add a lot of constraints. 
 The only exception to that would be Radix sort (the cooler Bucket), just so it is not all comparison-based sorts.
 I will also try out different variations for some of these. 
 As much as I can, but mostly for common options.
-For the slowsort and bogosort, timeout shall exist for sanity-related reasons.
+For the slow sort and bogosort, timeout shall exist for sanity-related reasons.
 
 Note that I will use lists for all algorithms, for pure input and output.
 SML does have immutable and mutable arrays and does allow direct mutation unlike e.g. Haskell,
@@ -90,9 +90,9 @@ You can see the full implementations at the [repo](TBD) for this project and in 
 
 ## Onto the Algorithms
 ### Split and Merge
-We have already covered the basic merge sort from above. 
+We have already covered the basic mergesort from above. 
 It is by no means complex, especially in the functional style.
-Generally most functional languages seem to use the merge sort as the prefered sorting algorithm.
+Generally most functional languages seem to use the mergesort as the preferred sorting algorithm.
 It is supposedly very fitting for lists, and it is stable too.
 Note that I said "basic" however.
 
@@ -103,7 +103,7 @@ fun sort _ [] = []
                                (splitAt xs ((List.length xs) div 2)))
 ```
 
-Looking at just the sort part, indeed, this merge sort does `splitAt`, an expensive operation. 
+Looking at just the sort part, indeed, this mergesort does `splitAt`, an expensive operation. 
 By itself it is `O(n/2)`, but we continue to split the list in half on each recursive call. 
 Thus, we get `O(nlogn)` as we keep halving `n` `logn` times.
 We have yet to merge and we already have to do `O(nlogn)` work, unideal.
@@ -130,7 +130,7 @@ fun sort _ [] = []
 ```
 Merge part can remain, but our splitting step is now much nicer, at the cost of code size.
 In some ways this is even more indicative of the "real" functional programming with maps and bunch of functions.
-Now this is a more proper merge sort. Still `O(nlogn)`, but now we don't have to do as much work. [](TODO:.RIGHT.VS.LEFT.FOLDS)
+Now this is a more proper mergesort. Still `O(nlogn)`, but now we don't have to do as much work. [](TODO:.RIGHT.VS.LEFT.FOLDS)
 We can do better with a "natural" optimization though:
 ```sml
 fun extractAsc ge [] = ([], [])
@@ -163,13 +163,13 @@ fun sort _ [] = []
   | sort _ [x] = [x]
   | sort ge xs = merger ge (combiner (natural ge xs))
 ```
-Other parts remain unchanged. Our merge sort is a little longer now, it is probably worse on pure random inputs too. 
-However, the more sorted (including reverse-sorted), chunks there are, the more this approaches `O(n)` as we simply do less of the actual merge sort.
+Other parts remain unchanged. Our mergesort is a little longer now, it is probably worse on pure random inputs too. 
+However, the more sorted (including reverse-sorted), chunks there are, the more this approaches `O(n)` as we simply do less of the actual mergesort.
 On the fully sorted sequence, we are done before we split or merge a single time.
 [](TODO:.WHAT.ABOUT.MAPPING-AS-WE-GO)
 
-### Quicksort ain't quick
-What better place to start with than the legendary haskell quicksort solution:
+### quicksort ain't quick
+What better place to start with than the legendary Haskell quicksort solution:
 ```haskell
 qsort []     = []
 qsort (p:xs) = qsort lesser ++ [p] ++ qsort greater
@@ -177,14 +177,14 @@ qsort (p:xs) = qsort lesser ++ [p] ++ qsort greater
         lesser  = filter (< p) xs
         greater = filter (>= p) xs
 ```
-Tiny, simple, functional, elegent, degenerate, and more so infamous than legendary. 
+Tiny, simple, functional, elegant, degenerate, and more so infamous than legendary. 
 I am obliged to point out that there many places to tell you how bad it is.
 The double filter instead of a single partition, the expensive appends, the always left pivot. 
 It is not at all in-place of course, so some don't even consider it a real quicksort.
 
 Now, do note that it does work, it will sort all of your lists. 
 By the time it is the problem you should probably be using arrays anyway.
-Still, it is greatly inefficient. Some of the defficiencies are super easy to fix too.
+Still, it is greatly inefficient. Some of the deficiencies are super easy to fix too.
 Have to include it nonetheless, so here is the SML version:
 ```sml
 fun sort _ [] = []
@@ -205,12 +205,12 @@ fun sort _ [] = []
     in (sort ge lesser) @ [p] @ (sort ge greater)
     end
 ```
-There is already a partition function that gathers trues in one list and falses in the other.
+There is already a partition function that gathers trues in one list and falsies in the other.
 It is perfectly suited for this case while being a single optimized call.
 
 Now there are other minor fixes that we can do, but I wanted something more. 
-Thus, I was able to find a different version of quicksort on [LiterateProgramming wiki](https://www.literateprograms.org/quicksort__haskell_.html),
-where the implementation uses accumulators to improve upon even merge sort from GHC (the main Haskell implementation):
+Thus, I was able to find a different version of quicksort on [Literate Programming wiki](https://www.literateprograms.org/quicksort__haskell_.html),
+where the implementation uses accumulators to improve upon even mergesort from GHC (the main Haskell implementation):
 ```haskell
 qsort3' [] y     = y
 qsort3' [x] y    = x:y
@@ -222,7 +222,7 @@ qsort3' (x:xs) y = part xs [] [x] []
             | z < x     = part zs (z:l) e g 
             | otherwise = part zs l (z:e) g
 ```
-It is relatively small and nice for what is supposedly better than GHC's merge sort.
+It is relatively small and nice for what is supposedly better than GHC's mergesort.
 Note that the wiki only tested large lists of random numbers and that was on an ancient GHC and Apple Powerbook[^1].
 Still, let us adapt that to SML:
 ```sml
@@ -242,6 +242,7 @@ It is not identical, differing in a few ways (e.g. we have `ge` rather than `>` 
 `part` is now a separate but mutually recursive function too.
 Nevertheless, the form is much the same.
 
+[](TODO:TEMP.NUMBERS)
 Then, I shall introduce a snippet of the benchmark for just these functions with random int list of n=10000:
 | Algorithm                   | Mean    | StdDev  | Err     |
 |-----------------------------|---------|---------|---------|
@@ -319,26 +320,117 @@ Middle element with linked lists is O(n) and with arrays O(1).
 Although, you might be surprised with random input (still n=10000):
 | Algorithm                   | Mean    | StdDev  | Err     |
 |-----------------------------|---------|---------|---------|
-| Natural bottom-up mergesort | 5.32 ms | 1.47 ms | 6.55 ms |
-| Accumulator quicksort       | 2.85 ms | 1.10 ms | 0.90 ms |
-| Array quicksort             | 0.95 ms | 0.04 ms | 0.02 ms |
+| Natural bottom-up mergesort | 2.71 ms | 0.24 ms | 0.11 ms |
+| Accumulator quicksort       | 2.06 ms | 0.45 ms | 0.20 ms |
+| List array quicksort        | 2.19 ms | 0.28 ms | 0.12 ms |
+| Array quicksort             | 1.08 ms | 0.17 ms | 0.07 ms |
 
-Naturally, it is nearly three times faster than the accumulator version. 
-However, I expected a much larger difference. 
+I also included the solution where a list is converted into array, 
+sorted using the array quicksort, 
+and then converted back into list.
+
+Naturally, the array quicksort is nearly three times faster than the accumulator version. 
+However, I expected a much larger difference.
 These are arrays vs linked lists need I remind you.
-Not sure what PolyML does in the background though.
+Not sure what Poly/ML does in the background. 
+Though, it is enough of a difference where converting to and from array is not a bad solution
 Regardless, the key difference can be seen in the sorted input:
 | Algorithm                   | Mean      | StdDev    | Err      |
 |-----------------------------|-----------|-----------|----------|
-| Natural bottom-up mergesort | 0.20 ms   | 0.05 ms   | 0.02 ms  |
-| Accumulator quicksort       | 396.53 ms | 106.47 ms | 47.62 ms |
-| Array quicksort             | 0.86 ms   | 0.04 ms   | 0.02 ms  |
+| Natural bottom-up mergesort | 0.13 ms   | 0.00 ms   | 0.00 ms  |
+| Accumulator quicksort       | 449.95 ms | 151.97 ms | 67.96 ms |
+| List array quicksort        | 0.94 ms   | 0.01 ms   | 0.00 ms  |
+| Array quicksort             | 0.94 ms   | 0.03 ms   | 0.01 ms  |
 
 With the middle pivot choice, array quicksort on sorted input is even slightly better than on random.
 Accumulator quicksort cannot begin to compare. 
 You can also see the benefit of the natural mergesort again, four times faster than the array version.
 Doing barely any work on lists is better than doing lots on arrays after all.
+Note that the list array quicksort is slightly slower, but even without rounding it is quite close
+
+### Building the Forest
+Another interesting algorithm is treesort. 
+In some ways it is quite elegant:
+```sml
+functor TreeSort(Tree : TREE) :> LIST_SORT = struct
+fun sort ge xs = Tree.inorder (Tree.produce ge xs)
+end
+```
+This example includes the structure (a functor to be exact) that takes in some tree structure. 
+Very handy for cases like these. 
+Naturally, we do need to define `produce` and `inorder` in some tree structure.
+These are simple functions at their core. 
+`produce` takes a list and returns a tree,
+`inorder` takes a tree and returns a list.
+
+A good start would certainly be the humble binary tree:
+```sml
+fun insert _ x Nil = Node (Nil, x, Nil)
+  | insert ge x (Node (l, y, r)) =
+    if ge (x, y) then
+        Node (l, y, insert ge x r)
+    else
+        Node (insert ge x l, y, r)
+
+fun produce ge xs = List.foldl (fn (x, t) => insert ge x t) Nil xs
+
+fun inorder Nil = []
+  | inorder (Node (l, v, r)) = (inorder l) @ (v::(inorder r))
+```
+Indeed, very simple. 
+The main function we care about is `insert` in this case, since `produce` and `inorder` are trivial.
+While this tree is capable, one big issue is that it is not *self-balancing*.
+A sorted input will turn it into a linked list which loses all the benefits of the binary tree.
+For this reason, I shall also include a Splay tree in buttom-up fashion:
+```sml
+fun rotLeft Nil = Nil
+  | rotLeft (p as Node (l, x, Nil)) = p
+  | rotLeft (Node (l, x, Node (rl, rx, rr))) = (Node (Node (l, x, rl), rx, rr))
+
+fun rotRight Nil = Nil
+  | rotRight (p as Node (Nil, x, r)) = p
+  | rotRight (Node (Node (ll, lx, lr), x, r)) = (Node (ll, lx, Node (lr, x, r)))
+
+fun splay ge [] = Nil
+  | splay ge [n] = n
+  | splay ge [s as Node (l, x, r), Node (pl, px, pr)] =
+    if ge (x, px) then
+        rotLeft (Node (pl, px, s))
+    else
+        rotRight (Node (s, px, pr))
+  | splay ge ((s as Node (l, x, r))::Node (pl, px, pr)::Node (gl, gx, gr)::ts) =
+    (case (ge (x, px), ge (px, gx)) of
+         (true, true) => 
+         splay ge (rotLeft (Node (gl, gx, rotLeft (Node (pl, px, s))))::ts)
+       | (true, false) => 
+         splay ge (rotRight (Node (rotLeft (Node (pl, px, s)), gx, gr))::ts)
+       | (false, true) => 
+         splay ge (rotLeft (Node (gl, gx, rotRight (Node (s, px, pr))))::ts)
+       | (false, false) => 
+         splay ge (rotRight (Node (rotRight (Node (s, px, pr)), gx, gr))::ts))
+  | splay ge _ = raise Impossible
+
+
+fun insert' _ x Nil acc = (Node (Nil, x, Nil))::acc
+  | insert' ge x (Node (l, y, r)) acc =
+    if ge (x, y) then
+        insert' ge x r ((Node (l, y, r))::acc)
+    else
+        insert' ge x l ((Node (l, y, r))::acc)
+
+fun insert ge x t = splay ge (insert' ge x t [])
+```
+The code is fundamentally simple, though there is a number of cases and auxiliaries.
+In some ways it improves upon the humble non-balancing tree, in others, it degrades. 
+Firstly, Splay trees can still turn into mostly linked lists if balancing is unlucky.
+Additionally, the rotations are a lot of extra work over the plain tree.
+This becomes a significant tradeoff.
+
+However, we can reduce that work by making a top-down algorithm that would only go down once:
+```sml
+```
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
-I did check what kind of merge sort GHC had in that version, and it seemed to be a simple bottom up solution without natural runs.
-These days, GHC has a beefy 4-way bottom-up merge sort with natural runs, not to mention many optimizations in the compiler itself since then.
+I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.
+Subsequent addition was natural runs, seemingly few major versions later.
+These days, GHC has a beefy 4-way bottom-up mergesort with natural runs, not to mention many optimizations in the compiler itself since then.

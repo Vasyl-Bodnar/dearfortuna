@@ -89,7 +89,7 @@ I will cover most algorithms here, though by no means equally.
 You can see the full implementations at the [repo](TBD) for this project and in the benchmark results.
 
 ## Onto the Algorithms
-### Split and Merge
+### Wise man has nothing to merge
 We have already covered the basic mergesort from above. 
 It is by no means complex, especially in the functional style.
 Generally most functional languages seem to use the mergesort as the preferred sorting algorithm.
@@ -164,11 +164,11 @@ fun sort _ [] = []
   | sort ge xs = merger ge (combiner (natural ge xs))
 ```
 Other parts remain unchanged. Our mergesort is a little longer now, it is probably worse on pure random inputs too. 
-However, the more sorted (including reverse-sorted), chunks there are, the more this approaches `O(n)` as we simply do less of the actual mergesort.
+However, the more sorted (including reverse-sorted) chunks there are, the more this approaches `O(n)` as we simply do less of the actual mergesort.
 On the fully sorted sequence, we are done before we split or merge a single time.
 [](TODO:.WHAT.ABOUT.MAPPING-AS-WE-GO)
 
-### quicksort ain't quick
+### Quicksort ain't quick
 What better place to start with than the legendary Haskell quicksort solution:
 ```haskell
 qsort []     = []
@@ -178,7 +178,7 @@ qsort (p:xs) = qsort lesser ++ [p] ++ qsort greater
         greater = filter (>= p) xs
 ```
 Tiny, simple, functional, elegant, degenerate, and more so infamous than legendary. 
-I am obliged to point out that there many places to tell you how bad it is.
+I am obliged to point out that there are many places to tell you how bad it is.
 The double filter instead of a single partition, the expensive appends, the always left pivot. 
 It is not at all in-place of course, so some don't even consider it a real quicksort.
 
@@ -325,15 +325,15 @@ Although, you might be surprised with random input (still n=10000):
 | List array quicksort        | 2.19 ms | 0.28 ms | 0.12 ms |
 | Array quicksort             | 1.08 ms | 0.17 ms | 0.07 ms |
 
-I also included the solution where a list is converted into array, 
+I also included the solution where a list is converted into an array, 
 sorted using the array quicksort, 
-and then converted back into list.
+and then converted back into a list.
 
 Naturally, the array quicksort is nearly three times faster than the accumulator version. 
 However, I expected a much larger difference.
 These are arrays vs linked lists need I remind you.
 Not sure what Poly/ML does in the background. 
-Though, it is enough of a difference where converting to and from array is not a bad solution
+Though, it is enough of a difference where converting to and from array is not a bad solution.
 Regardless, the key difference can be seen in the sorted input:
 | Algorithm                   | Mean      | StdDev    | Err      |
 |-----------------------------|-----------|-----------|----------|
@@ -346,7 +346,7 @@ With the middle pivot choice, array quicksort on sorted input is even slightly b
 Accumulator quicksort cannot begin to compare. 
 You can also see the benefit of the natural mergesort again, four times faster than the array version.
 Doing barely any work on lists is better than doing lots on arrays after all.
-Note that the list array quicksort is slightly slower, but even without rounding it is quite close
+Note that the list array quicksort is slightly slower, but even without rounding (nearest number for the curious) it is quite close
 
 ### Building the Forest
 Another interesting algorithm is treesort. 
@@ -356,9 +356,9 @@ functor TreeSort(Tree : TREE) :> LIST_SORT = struct
 fun sort ge xs = Tree.inorder (Tree.produce ge xs)
 end
 ```
-This example includes the structure (a functor to be exact) that takes in some tree structure. 
+This example includes a functor that takes in some tree structure to produce a new module. 
 Very handy for cases like these. 
-Naturally, we do need to define `produce` and `inorder` in some tree structure.
+Naturally, we do need to define `produce` and `inorder` in some tree structure to pass in.
 These are simple functions at their core. 
 `produce` takes a list and returns a tree,
 `inorder` takes a tree and returns a list.
@@ -381,7 +381,7 @@ Indeed, very simple.
 The main function we care about is `insert` in this case, since `produce` and `inorder` are trivial.
 While this tree is capable, one big issue is that it is not *self-balancing*.
 A sorted input will turn it into a linked list which loses all the benefits of the binary tree.
-For this reason, I shall also include a Splay tree in buttom-up fashion:
+For this reason, I shall also include a Splay tree in bottom-up fashion:
 ```sml
 fun rotLeft Nil = Nil
   | rotLeft (p as Node (l, x, Nil)) = p
@@ -426,9 +426,55 @@ Firstly, Splay trees can still turn into mostly linked lists if balancing is unl
 Additionally, the rotations are a lot of extra work over the plain tree.
 This becomes a significant tradeoff.
 
-However, we can reduce that work by making a top-down algorithm that would only go down once:
+However, we can reduce that work by making a top-down algorithm. 
+Top-down we would only need to go once through the tree instead of twice like in the bottom-up.
+My solution is a little messy but it is based on a standard triple trees method:
 ```sml
+fun insertLeftmost n Nil = n
+  | insertLeftmost n (Node (l, x, r)) = (Node (insertLeftmost n l, x, r))
+
+fun insertRightmost n Nil = n
+  | insertRightmost n (Node (l, x, r)) = (Node (l, x, insertRightmost n r))
+
+fun rotLeft Nil left right = (Nil, left, right)
+  | rotLeft (Node (l, x, r)) left right = (r, insertRightmost (Node (l, x, Nil)) left, right)
+
+fun rotRight Nil left right = (Nil, left, right)
+  | rotRight (Node (l, x, r)) left right = (l, left, insertLeftmost (Node (Nil, x, r)) right)
+
+fun insert' _ x Nil left right = Node (left, x, right)
+  | insert' ge x (Node (l, y, r)) left right =
+    if ge (x, y) then
+        let val (mid, left, right) = rotLeft (Node (l, y, r)) left right
+            val (r, left, right) = case r of
+                        Nil => (Nil, left, right)
+                      | Node (rl, ry, rr) =>
+                        if ge (x, ry) then
+                            rotLeft (Node (rl, ry, rr)) left right
+                        else
+                            rotRight (Node (rl, ry, rr)) left right
+        in
+            insert' ge x r left right
+        end
+    else
+        let val (mid, left, right) = rotRight (Node (l, y, r)) left right
+            val (l, left, right) = case l of
+                        Nil => (Nil, left, right)
+                      | Node (ll, ly, lr) =>
+                        if ge (x, ly) then
+                            rotLeft (Node (ll, ly, lr)) left right
+                        else
+                            rotRight (Node (ll, ly, lr)) left right
+        in
+            insert' ge x l left right
+        end
+
+fun insert ge x t = insert' ge x t Nil Nil
 ```
+Overall, this should improve the results, though unlikely to compete with the good sorts.
+
+These trees are all good of course, but there is one tree that I always wanted to implement, a B+ tree.
+This would be a great time to see how it would fair as a base for a treesort too:
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

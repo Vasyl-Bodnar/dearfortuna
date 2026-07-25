@@ -56,13 +56,13 @@ Well there is a long list of `sort`s to consider, but I will keep to a couple of
 - Selection sort, for being `O(n^2)`
 - Bubble sort, for being known
 - Radix sort, for lack of comparisons
-- Slow sort and bogosort, to have a terrific baseline
+- Bogosort, to have a terrific baseline
 
 I will exclude e.g. Bucket sort and others that add a lot of constraints. 
 The only exception to that would be Radix sort (the cooler Bucket), just so it is not all comparison-based sorts.
 I will also try out different variations for some of these. 
 As much as I can, but mostly for common options.
-For the slow sort and bogosort, timeout shall exist for sanity-related reasons.
+For the bogosort and few others, timeout shall exist for sanity-related reasons.
 
 Note that I will use lists for all algorithms, for pure input and output.
 SML does have immutable and mutable arrays and does allow direct mutation unlike e.g. Haskell,
@@ -106,7 +106,7 @@ fun sort _ [] = []
 Looking at just the sort part, indeed, this mergesort does `splitAt`, an expensive operation. 
 By itself it is `O(n/2)`, but we continue to split the list in half on each recursive call. 
 Thus, we get `O(nlogn)` as we keep halving `n` `logn` times.
-We have yet to merge and we already have to do `O(nlogn)` work, unideal.
+We have yet to merge and we already have to do `O(nlogn)` work, not ideal.
 
 There is, thankfully, a solution. We can do a bottom-up:
 ```sml
@@ -332,7 +332,7 @@ and then converted back into a list.
 Naturally, the array quicksort is nearly three times faster than the accumulator version. 
 However, I expected a much larger difference.
 These are arrays vs linked lists need I remind you.
-Not sure what Poly/ML does in the background. 
+Not sure what Poly/ML does in the background, possibly related to these being polymorphic arrays. 
 Though, it is enough of a difference where converting to and from array is not a bad solution.
 Regardless, the key difference can be seen in the sorted input:
 | Algorithm                   | Mean      | StdDev    | Err      |
@@ -424,7 +424,7 @@ The code is fundamentally simple, though there is a number of cases and auxiliar
 In some ways it improves upon the humble non-balancing tree, in others, it degrades. 
 Firstly, Splay trees can still turn into mostly linked lists if balancing is unlucky.
 Additionally, the rotations are a lot of extra work over the plain tree.
-This becomes a significant tradeoff.
+This becomes a significant trade off.
 
 However, we can reduce that work by making a top-down algorithm. 
 Top-down we would only need to go once through the tree instead of twice like in the bottom-up.
@@ -472,9 +472,56 @@ fun insert' _ x Nil left right = Node (left, x, right)
 fun insert ge x t = insert' ge x t Nil Nil
 ```
 Overall, this should improve the results, though unlikely to compete with the good sorts.
+There could be some other trees to try. I even considered B+, but the ideal solution will definitely betray the functional style.
+Still, we need to test how binary and Splay would be doing, starting with random values:
+| Algorithm                   | Mean    | StdDev  | Err     |
+|-----------------------------|---------|---------|---------|
+| Natural bottom-up mergesort | 3.42 ms | 0.84 ms | 0.38 ms |
+| Simple treesort             | 2.98 ms | 0.29 ms | 0.13 ms |
+| Splay treesort              | 8.24 ms | 0.83 ms | 0.37 ms |
+| Top-down Splay treesort     | 8.31 ms | 1.30 ms | 0.58 ms |
+| Array quicksort             | 1.11 ms | 0.09 ms | 0.04 ms |
 
-These trees are all good of course, but there is one tree that I always wanted to implement, a B+ tree.
-This would be a great time to see how it would fair as a base for a treesort too:
+Simple binary tree does quite well, even faster than our mergesort. 
+Splay trees do a lot of extra work, which is not necessary with random data.
+Top-down came out slower here, so I have to start blaming my implementation.
+Array quicksort is as fast as always.
+
+Now, the more tricky question is sorted input:
+| Algorithm                   | Mean      | StdDev   | Err      |
+|-----------------------------|-----------|----------|----------|
+| Natural bottom-up mergesort | 0.21 ms   | 0.03 ms  | 0.01 ms  |
+| Simple treesort             | 591.08 ms | 18.85 ms | 8.43 ms  |
+| Splay treesort              | 377.89 ms | 10.28 ms | 4.60 ms  |
+| Top-down Splay treesort     | 397.07 ms | 23.74 ms | 10.62 ms |
+| Array quicksort             | 1.17 ms   | 0.24 ms  | 0.11 ms  |
+
+Yeah, not great. 
+Splay trees are nearly twice as fast as the binary tree at least. 
+My top-down is slower again. 
+Other solutions are as fast as you expect.
+
+Fun thing about the reverse sorted input (i.e. descending):
+
+> Process poly killed
+
+Oops, when testing on my REPL, it did not even finish.
+The issue happened in the Splay tree seemingly going on infinitely. 
+This is either my error or a limit to the bottom-up for PolyML here, as it does relatively well on smaller inputs.
+Anyway, let us just exclude it for now:
+| Algorithm                   | Mean      | StdDev   | Err      |
+|-----------------------------|-----------|----------|----------|
+| Natural bottom-up mergesort | 0.83 ms   | 0.08 ms  | 0.04 ms  |
+| Simple treesort             | 958.55 ms | 33.19 ms | 14.84 ms |
+| Top-down Splay treesort     | 0.37 ms   | 0.04 ms  | 0.02 ms  |
+| Array quicksort             | 1.41 ms   | 0.03 ms  | 0.01 ms  |
+
+What I wanted to display is how fast the top-down splay treesort is for this specific use case. 
+Likely a quirk of my implementation and the way recursion occurs in some places. 
+It is completely different from ascendingly sorted input to begin with.
+An interesting anomaly nonetheless. However, these treesorts have proven themselves quite incompetent for a general case.
+
+### Squares
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

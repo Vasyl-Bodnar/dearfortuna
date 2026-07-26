@@ -51,7 +51,6 @@ Well there is a long list of `sort`s to consider, but I will keep to a couple of
 - Mergesort, supposedly better for functional languages
 - Quicksort, with its many variations
 - Treesort, since trees are nice
-- Heapsort, for seeing how it would turn out
 - Insertion sort, for being great
 - Selection sort, for being `O(n^2)`
 - Bubble sort, for being known
@@ -60,14 +59,15 @@ Well there is a long list of `sort`s to consider, but I will keep to a couple of
 
 I will exclude e.g. Bucket sort and others that add a lot of constraints. 
 The only exception to that would be Radix sort (the cooler Bucket), just so it is not all comparison-based sorts.
+I will exclude other algorithms like heapsort that depend heavily on the array and would do extremely poorly without it.
 I will also try out different variations for some of these. 
-As much as I can, but mostly for common options.
+Naturally, as much as I can, but mostly for common options.
 For the bogosort and few others, timeout shall exist for sanity-related reasons.
 
-Note that I will use lists for all algorithms, for pure input and output.
+Note that I will use lists for most algorithms, for pure input and output.
 SML does have immutable and mutable arrays and does allow direct mutation unlike e.g. Haskell,
 but it would be no fun to compare a mix of in-place array algorithms vs linked list algorithms.
-However, I will have quicksort with both list and array solutions. 
+However, I will promise quicksort with both list and array solutions. 
 This will still allow us to compare how well arrays would do.
 
 I will be benchmarking them in SML, though there are caveats.
@@ -75,13 +75,13 @@ Firstly, since I will be mostly doing these by hand, and I am not an SML expert,
 there could be defects in implementations.
 These defects are especially likely where I will be adapting array algorithms to lists.
 Naturally, the implementations might not be the best, especially in relation to functional languages.
+Still, worst, average, and best-cases are likely to dominate over my implementation specifics.
 I will try to do best reasonable effort and keep algorithms relatively simple.
 
 Additionally, note that I will be using Poly/ML implementation of SML.
 Given whatever optimizations and quirks Poly/ML does and does not, 
 these results may not apply directly to other implementation of SML, 
 much less other functional languages. 
-Still, worst, average, and best-cases are likely to dominate over my implementation specifics.
 Lastly, benchmarking is easy to mess up in general, keep that in mind.
 Primary goal is fun and humane accuracy.
 
@@ -508,7 +508,7 @@ Fun thing about the reverse sorted input (i.e. descending):
 Oops, when testing on my REPL, it did not even finish.
 The issue happened in the Splay tree seemingly going on infinitely. 
 This is either my error or a limit to the bottom-up for PolyML here, as it does relatively well on smaller inputs.
-Anyway, let us just exclude it for now:
+Anyway, let us just exclude it for now, we will consider it later anyway:
 | Algorithm                   | Mean      | StdDev   | Err      |
 |-----------------------------|-----------|----------|----------|
 | Natural bottom-up mergesort | 0.83 ms   | 0.08 ms  | 0.04 ms  |
@@ -519,9 +519,33 @@ Anyway, let us just exclude it for now:
 What I wanted to display is how fast the top-down splay treesort is for this specific use case. 
 Likely a quirk of my implementation and the way recursion occurs in some places. 
 It is completely different from ascendingly sorted input to begin with.
-An interesting anomaly nonetheless. However, these treesorts have proven themselves quite incompetent for a general case.
+An interesting anomaly nonetheless. 
+However, these treesorts have proven themselves quite incompetent for a general case.
+Thankfully, we still have more algorithms to test.
 
-### Squares
+### Square into `nlogn` hole
+We shall take a look at insertion sort, selection sort, and bubble sort. 
+These are relatively simple algorithms, which is why they are quire popular.
+Starting with insertion sort:
+```sml
+fun insertion ge [] ys = ys
+  | insertion ge (x::xs) ys =
+    let val (ys, b) = List.foldr (fn (y, (acc, b)) =>
+                                     if b andalso ge (x, y)
+                                     then (y::x::acc, false)
+                                     else (y::acc, b)) ([], true) ys
+    in if b
+       then insertion ge xs (x::ys)
+       else insertion ge xs ys
+    end
+
+fun sort ge [] = []
+  | sort ge [x] = [x]
+  | sort ge xs = insertion ge xs []
+```
+The implementation is indeed simple (can also be done with partition if you want compactness at a cost of some speed).
+However, performance leaves much to be desired even in the quick checks.
+How about selection sort then:
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

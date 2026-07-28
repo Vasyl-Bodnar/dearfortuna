@@ -546,6 +546,67 @@ fun sort ge [] = []
 The implementation is indeed simple (can also be done with partition if you want compactness at a cost of some speed).
 However, performance leaves much to be desired even in the quick checks.
 How about selection sort then:
+```sml
+fun selection ge [] ys = ys
+  | selection ge xs ys =
+    let val (min, rest) = List.foldl (fn (x, (SOME y, acc)) =>
+                                         if ge (x, y) then
+                                             (SOME x, y::acc)
+                                         else
+                                             (SOME y, x::acc)
+                                     | (x, (NONE, acc)) => (SOME x, acc))
+                                     (NONE, []) xs
+    in case min of
+           NONE => ys
+         | SOME x => selection ge rest (x::ys)
+    end
+
+fun sort ge [] = []
+  | sort ge [x] = [x]
+  | sort ge xs = selection ge xs []
+```
+Similarly complicated, and should in general be comparable.
+Performance is not great.
+Maybe the bubble sort is the solution:
+```sml
+fun bubble ge [] = ([], false)
+  | bubble ge [x] = ([x], false)
+  | bubble ge (x::y::xs) =
+    if ge (x, y) then
+        let val (l, _) = bubble ge (x::xs)
+        in (y::l, true)
+        end
+    else
+        let val (l, b) = bubble ge (y::xs)
+        in (x::l, b)
+        end
+
+fun sort ge [] = []
+  | sort ge [x] = [x]
+  | sort ge xs =
+    let val (xs, b) = bubble ge xs
+    in if b then
+           sort ge xs
+       else
+           xs
+    end
+```
+A little more complicated in some ways. Generally comparable still.
+
+Performance is, uh, how about the benchmarks:
+| Algorithm                   | Mean      | StdDev    | Err      |
+|-----------------------------|-----------|-----------|----------|
+| Natural bottom-up mergesort | 4.61 ms   | 0.69 ms   | 0.31 ms  |
+| Insertion sort              | 791.72 ms | 30.39 ms  | 13.59 ms |
+| Selection sort              | 843.42 ms | 148.58 ms | 66.45 ms |
+| Array quicksort             | 1.20 ms   | 0.15 ms   | 0.07 ms  |
+
+Bubble sort is so slow that I can't run it on input of a 1000 numbers, and these are n=10000 to remind you.
+So again, either there is a mistake in my port to functional style or it genuinely is that bad.
+Regardless, insertion and selection are quite dissapointing, though predictably so.
+Insertion is a little better on sorted input (500 ms from a quick test), 
+but there isn't even a point in showing the results for that.
+Overall, I am heavily dissapointed with the `O(n^2)` algorithms for the test inputs.
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

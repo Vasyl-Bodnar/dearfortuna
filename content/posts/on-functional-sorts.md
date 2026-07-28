@@ -86,6 +86,7 @@ Lastly, benchmarking is easy to mess up in general, keep that in mind.
 Primary goal is fun and humane accuracy.
 
 I will cover most algorithms here, though by no means equally. 
+I will also include some benchmarks from the REPL testing, though they will only be on large either random or sorted input.
 You can see the full implementations at the [repo](TBD) for this project and in the benchmark results.
 
 ## Onto the Algorithms
@@ -518,7 +519,7 @@ Anyway, let us just exclude it for now, we will consider it later anyway:
 
 What I wanted to display is how fast the top-down splay treesort is for this specific use case. 
 Likely a quirk of my implementation and the way recursion occurs in some places. 
-It is completely different from ascendingly sorted input to begin with.
+It is completely different from input sorted ascending to begin with.
 An interesting anomaly nonetheless. 
 However, these treesorts have proven themselves quite incompetent for a general case.
 Thankfully, we still have more algorithms to test.
@@ -592,8 +593,7 @@ fun sort ge [] = []
     end
 ```
 A little more complicated in some ways. Generally comparable still.
-
-Performance is, uh, how about the benchmarks:
+Performance is, uhh, how about the benchmarks:
 | Algorithm                   | Mean      | StdDev    | Err      |
 |-----------------------------|-----------|-----------|----------|
 | Natural bottom-up mergesort | 4.61 ms   | 0.69 ms   | 0.31 ms  |
@@ -601,12 +601,15 @@ Performance is, uh, how about the benchmarks:
 | Selection sort              | 843.42 ms | 148.58 ms | 66.45 ms |
 | Array quicksort             | 1.20 ms   | 0.15 ms   | 0.07 ms  |
 
-Bubble sort is so slow that I can't run it on input of a 1000 numbers, and these are n=10000 to remind you.
-So again, either there is a mistake in my port to functional style or it genuinely is that bad.
-Regardless, insertion and selection are quite dissapointing, though predictably so.
+Bubble sort is not included. It is so slow that I can't run it on input of a 1000 numbers, 
+and these are n=10000 need I remind you.
+Thus, similarly to bottom-up splay tree, either there is a mistake in my port to functional style or it genuinely is that bad.
+
+Regardless, insertion and selection are quite disappointing, predictably so however, given the algorithms.
 Insertion is a little better on sorted input (500 ms from a quick test), 
-but there isn't even a point in showing the results for that.
-Overall, I am heavily dissapointed with the `O(n^2)` algorithms for the test inputs.
+but there isn't even a point in showing a table for that alone.
+Overall, I am heavily disappointed with the `O(n^2)` algorithms for the test inputs.
+Although, it is hard to be surprised when I am adapting what would otherwise be at least in-place algorithms on arrays.
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

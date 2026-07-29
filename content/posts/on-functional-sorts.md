@@ -131,7 +131,7 @@ fun sort _ [] = []
 ```
 Merge part can remain, but our splitting step is now much nicer, at the cost of code size.
 In some ways this is even more indicative of the "real" functional programming with maps and bunch of functions.
-Now this is a more proper mergesort. Still `O(nlogn)`, but now we don't have to do as much work. [](TODO:.RIGHT.VS.LEFT.FOLDS)
+Now this is a more proper mergesort. Still `O(nlogn)`, but now we don't have to do as much work.
 We can do better with a "natural" optimization though:
 ```sml
 fun extractAsc ge [] = ([], [])
@@ -166,8 +166,8 @@ fun sort _ [] = []
 ```
 Other parts remain unchanged. Our mergesort is a little longer now, it is probably worse on pure random inputs too. 
 However, the more sorted (including reverse-sorted) chunks there are, the more this approaches `O(n)` as we simply do less of the actual mergesort.
-On the fully sorted sequence, we are done before we split or merge a single time.
-[](TODO:.WHAT.ABOUT.MAPPING-AS-WE-GO)
+On the fully sorted sequence, we are done before we split or merge a single time. 
+There are still a few other potential though minor improvements we can try, but this is plenty good.
 
 ### Quicksort ain't quick
 What better place to start with than the legendary Haskell quicksort solution:
@@ -243,7 +243,6 @@ It is not identical, differing in a few ways (e.g. we have `ge` rather than `>` 
 `part` is now a separate but mutually recursive function too.
 Nevertheless, the form is much the same.
 
-[](TODO:TEMP.NUMBERS)
 Then, I shall introduce a snippet of the benchmark for just these functions with random int list of n=10000:
 | Algorithm                   | Mean    | StdDev  | Err     |
 |-----------------------------|---------|---------|---------|
@@ -610,6 +609,135 @@ Insertion is a little better on sorted input (500 ms from a quick test),
 but there isn't even a point in showing a table for that alone.
 Overall, I am heavily disappointed with the `O(n^2)` algorithms for the test inputs.
 Although, it is hard to be surprised when I am adapting what would otherwise be at least in-place algorithms on arrays.
+
+### Shall not compare
+Thankfully, we have what are considered by many the superiour sorting algorithm, 
+as long as your values are easy to bucket, the Radix sort.
+Now, buckets generally favor arrays heavily, since O(1) is unbeatable there.
+For the sake of fairness I included two solutions, both are LSB for some number of bits.
+One will be in pure lists, the other will have an array for buckets, but nothing else.
+Onto the list one:
+```sml
+functor RadixListSort(val bits : Word.word) :> INT_LIST_SORT = struct
+fun radix xs i =
+    if i = (0w64 div bits) then xs else
+    let val shift = Word.*(i, bits)
+        val mask = Word64.<<(Word64.-(Word64.<<(0w1, bits), 0w1), shift)
+        val xs = List.map (fn x => (x, Word64.toInt (Word64.>>(
+                                        Word64.andb(x, mask),
+                                        shift)))) xs
+        val xs = List.foldr (fn ((x, d), acc) =>
+                                let val befor = List.take (acc, d)
+                                    val after = List.drop (acc, d)
+                                in case after of
+                                       [] => befor @ [[x]]
+                                     | l::ls => befor @ ((x::l)::ls)
+                                end)
+                            (List.tabulate(Word64.toInt (Word64.<<(0w1, bits)),
+                                           fn _ => [])) xs
+        val xs = List.concat xs
+    in
+        radix xs (Word.+(i, 0w1))
+    end
+
+fun sort _ [] = []
+  | sort _ [x] = [x]
+  | sort _ xs = List.map Word64.toInt
+                         (radix (List.map Word64.fromInt xs) 0w0)
+end
+```
+Another functor! When you see three in a casual use like this, you must consider it a good day.
+This solution is general to the number of bits that are provided at construction. 
+You can also see the big negative of lists showing up here, 
+as I am forced to traverse many buckets until I can put the element in, rather than a simple `O(1)` of an array.
+A `fold` can be used instead of `take` and `drop` for extra performance, but it is already complicated enough.
+
+Anyway, the bit option opens a question of how many bits should we use for best performance.
+Bits are typically a tradeoff of iterations vs space, in arrays at least. 
+This is of course true for lists as well, but the balance will be different.
+Thus, let us compare different bit sizes in a benchmark:
+| Algorithm                   | Mean     | StdDev  | Err     |
+|-----------------------------|----------|---------|---------|
+| Natural bottom-up mergesort | 4.15 ms  | 0.50 ms | 0.22 ms |
+| 2-bit List Radix sort       | 19.37 ms | 3.33 ms | 1.49 ms |
+| 3-bit List Radix sort       | 14.67 ms | 3.82 ms | 1.71 ms |
+| 4-bit List Radix sort       | 9.42 ms  | 0.72 ms | 0.32 ms |
+| 5-bit List Radix sort       | 9.86 ms  | 0.33 ms | 0.15 ms |
+| 6-bit List Radix sort       | 13.97 ms | 0.61 ms | 0.27 ms |
+| 8-bit List Radix sort       | 41.12 ms | 2.07 ms | 0.92 ms |
+| Array quicksort             | 1.05 ms  | 0.02 ms | 0.01 ms |
+
+As one would expect for lists, having more iterations is not as bad as having more items to traverse.
+4-bit version is 4 times faster than the 8-bit version. 
+3 and 2-bit are, just like 5 and 6-bit, slower, at least a little bit. From this, 4-bit seems the ideal bit size for this version.
+I did think about 16-bit once, but that one takes forever.
+
+All of these versions are slower than mergesort and especially array quicksort.
+However, unlike quadratics, at least these are in the same league.
+Now, what about using the more proper style, with array buckets:
+```sml
+functor RadixArraySort(val bits : Word.word) :> INT_LIST_SORT = struct
+local val buckets = Array.tabulate(Word64.toInt
+                                       (Word64.<<(0w1, bits)),
+                                   fn _ => [])
+in
+fun radix xs i =
+    if i = (0w64 div bits) then xs else
+    let val _ = Array.modify (fn _ => []) buckets
+        val shift = Word.*(i, bits)
+        val mask = Word64.<<(Word64.-(Word64.<<(0w1, bits), 0w1), shift)
+        val _ = List.app (fn x =>
+                             let val idx =
+                                     Word64.toInt
+                                         (Word64.>>(
+                                               Word64.andb(x, mask),
+                                               shift))
+                             in Array.update (buckets, idx,
+                                              x::(Array.sub (buckets, idx)))
+                             end) xs
+        val xs = Array.foldr (op List.revAppend) [] buckets
+    in
+        radix xs (Word.+(i, 0w1))
+    end
+end
+
+fun sort _ [] = []
+  | sort _ [x] = [x]
+  | sort _ xs = List.map Word64.toInt
+                         (radix (List.map Word64.fromInt xs) 0w0)
+end
+```
+There are a couple of differences, but honestly not that many. 
+The core of the algorithm is much the same. 
+Big difference is buckets are an array instead of list.
+Still, we need to know the best number of bits,
+and there is a benchmark I can sell you:
+| Algorithm                   | Mean     | StdDev  | Err     |
+|-----------------------------|----------|---------|---------|
+| Natural bottom-up mergesort | 3.74 ms  | 1.69 ms | 0.75 ms |
+| 4-bit List Radix sort       | 12.70 ms | 2.08 ms | 0.93 ms |
+| 2-bit Array Radix sort      | 6.23 ms  | 0.90 ms | 0.40 ms |
+| 4-bit Array Radix sort      | 2.89 ms  | 0.40 ms | 0.18 ms |
+| 6-bit Array Radix sort      | 1.62 ms  | 0.10 ms | 0.04 ms |
+| 8-bit Array Radix sort      | 1.36 ms  | 0.04 ms | 0.02 ms |
+| 10-bit Array Radix sort     | 0.98 ms  | 0.34 ms | 0.15 ms |
+| 12-bit Array Radix sort     | 1.16 ms  | 0.13 ms | 0.06 ms |
+| 14-bit Array Radix sort     | 1.13 ms  | 0.12 ms | 0.05 ms |
+| 16-bit Array Radix sort     | 1.41 ms  | 0.12 ms | 0.06 ms |
+| List array quicksort        | 2.18 ms  | 0.23 ms | 0.10 ms |
+| Array quicksort             | 1.10 ms  | 0.11 ms | 0.05 ms |
+
+As expected, it is a significant improvement over the list one. 
+Indeed some of these even matched or exceeded the array quicksort, 
+while still processing a list at their core mind you.
+I added a list array quicksort for comparison, since it is a little closer in spirit, 
+yet it is twice as slow. Radix really is great when it wins with a handicap. 
+Shame it is not as general.
+
+Note that while in this case 10-bit version is faster, 
+I noticed that the general region of 10-14 seemed to be good, 
+with no obvious winner at repeating my sample sizes. 
+More testing required.
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

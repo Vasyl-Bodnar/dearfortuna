@@ -548,17 +548,14 @@ However, performance leaves much to be desired even in the quick checks.
 How about selection sort then:
 ```sml
 fun selection ge [] ys = ys
-  | selection ge xs ys =
-    let val (min, rest) = List.foldl (fn (x, (SOME y, acc)) =>
+  | selection ge (x::xs) ys =
+    let val (min, rest) = List.foldl (fn (x, (y, acc)) =>
                                          if ge (x, y) then
-                                             (SOME x, y::acc)
+                                             (x, y::acc)
                                          else
-                                             (SOME y, x::acc)
-                                     | (x, (NONE, acc)) => (SOME x, acc))
-                                     (NONE, []) xs
-    in case min of
-           NONE => ys
-         | SOME x => selection ge rest (x::ys)
+                                             (y, x::acc))
+                                     (x, []) xs
+    in selection ge rest (min::ys)
     end
 
 fun sort ge [] = []
@@ -595,10 +592,10 @@ A little more complicated in some ways. Generally comparable still.
 Performance is, uhh, how about the benchmarks:
 | Algorithm                   | Mean      | StdDev    | Err      |
 |-----------------------------|-----------|-----------|----------|
-| Natural bottom-up mergesort | 4.61 ms   | 0.69 ms   | 0.31 ms  |
-| Insertion sort              | 791.72 ms | 30.39 ms  | 13.59 ms |
-| Selection sort              | 843.42 ms | 148.58 ms | 66.45 ms |
-| Array quicksort             | 1.20 ms   | 0.15 ms   | 0.07 ms  |
+| Natural bottom-up mergesort | 3.52 ms   | 0.55 ms   | 0.24 ms  |
+| Insertion sort              | 750.23 ms | 76.92 ms  | 34.40 ms |
+| Selection sort              | 703.18 ms | 121.30 ms | 54.25 ms |
+| Array quicksort             | 1.47 ms   | 0.33 ms   | 0.15 ms  |
 
 Bubble sort is not included. It is so slow that I can't run it on input of a 1000 numbers, 
 and these are n=10000 need I remind you.
@@ -728,11 +725,11 @@ and there is a benchmark I can sell you:
 | Array quicksort             | 1.10 ms  | 0.11 ms | 0.05 ms |
 
 As expected, it is a significant improvement over the list one. 
-Indeed some of these even matched or exceeded the array quicksort, 
-while still processing a list at their core mind you.
+Indeed some of these even matched or exceeded the array quicksort 
+while still processing a list at their core.
 I added a list array quicksort for comparison, since it is a little closer in spirit, 
-yet it is twice as slow. Radix really is great when it wins with a handicap. 
-Shame it is not as general.
+yet it is twice as slow. Radix really is great when it is able to win with a handicap. 
+Shame it is not as general and limited to list input here.
 
 Note that while in this case 10-bit version is faster, 
 I noticed that the general region of 10-14 seemed to be good, 

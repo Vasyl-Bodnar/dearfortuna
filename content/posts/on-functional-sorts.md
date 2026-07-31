@@ -729,12 +729,78 @@ Indeed some of these even matched or exceeded the array quicksort
 while still processing a list at their core.
 I added a list array quicksort for comparison, since it is a little closer in spirit, 
 yet it is twice as slow. Radix really is great when it is able to win with a handicap. 
-Shame it is not as general and limited to list input here.
+Shame it is not as general and limited to list a input here.
 
 Note that while in this case 10-bit version is faster, 
 I noticed that the general region of 10-14 seemed to be good, 
 with no obvious winner at repeating my sample sizes. 
 More testing required.
+
+### Random
+Bogosort is a joke entry, but using random shuffles is still a legal move.
+Note that bogosort typically depends on arrays, using lists would make it abysmal.
+As such, I will still use arrays for shuffling, in the style of the quicksort list-to-array-to-list solution.
+The result is such:
+```sml
+fun check _ [] b = b
+  | check _ [x] b = b
+  | check ge (x::y::xs) b =
+    if not b then b
+    else check ge (y::xs) (ge (y, x))
+
+local val grng = ref (Random.init 23)
+in
+fun shuffle xs =
+    let val xs = Array.fromList xs
+        val len = Array.length xs
+    in
+        Array.modify (fn x =>
+                         let val ((y, j), rng) =
+                                 Random.map (fn r =>
+                                                let val r = r mod len
+                                                in (Array.sub (xs, r), r)
+                                                end) (!grng)
+                         in
+                             grng := rng;
+                             Array.update (xs, j, x);
+                             y
+                         end) xs;
+        List.tabulate (len, fn i => Array.sub (xs, i))
+    end
+end
+
+fun sort _ [] = []
+  | sort _ [x] = [x]
+  | sort ge xs = if check ge xs true
+                 then xs
+                 else sort ge (shuffle xs)
+```
+A little messy, but the core is simple enough. 
+Check if it is sorted, otherwise shuffle and try again.
+Note that I kept arrays to `shuffle` only, since list shuffle is not great, but checking is fine. 
+This does imply a big performance degradation in the constant conversion from list to array and back.
+This is bogosort however, so making it run slower would be in the spirit.
+Here is an example on **n=5**, random input, note the time being microseconds as opposed to milliseconds:
+| Algorithm                   | Mean     | StdDev   | Err     |
+|-----------------------------|----------|----------|---------|
+| Natural bottom-up mergesort | 0.27 us  | 0.14 us  | 0.01 us |
+| Bogosort                    | 67.89 us | 20.53 us | 1.45 us |
+| Array quicksort             | 0.20 us  | 0.16 us  | 0.01 us |
+
+At n=6, it already goes up to 500 ns, so going further is not a bright idea.
+Still, n=5 is not too bad in comparison to nothing.
+Nothing surprising however.
+
+It does pretty well on sorted, n=10000 though:
+| Algorithm                   | Mean    | StdDev  | Err     |
+|-----------------------------|---------|---------|---------|
+| Natural bottom-up mergesort | 0.22 ms | 0.02 ms | 0.01 ms |
+| Bogosort                    | 0.07 ms | 0.00 ms | 0.00 ms |
+| Array quicksort             | 1.09 ms | 0.10 ms | 0.04 ms |
+
+This insane speedup is thanks to `check` being before `shuffle`.
+If you only get sorted input, bogosort is the winner. 
+It at least has that over the quadratic algorithms.
 
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.

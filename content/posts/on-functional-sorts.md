@@ -802,6 +802,23 @@ This insane speedup is thanks to `check` being before `shuffle`.
 If you only get sorted input, bogosort is the winner. 
 It at least has that over the quadratic algorithms.
 
+### Real benchmarking
+So far these benchmarks were mostly quick tests in REPL for n=10000, random input or occasionally sorted input.
+This gives us an idea of what to expect. 
+However, it is not enough to gauge whether these algorithms match their time complexity.
+It is also a poor comparison since real use is rarely purely random, nor is it always sorted.
+
+For these purposes, I devised a few extra cases, though not complete enough still.
+First is semi-sorted and partially-sorted orderings, where the names are decorative. 
+Semi-sorted means that we will swap x number of elements from a sorted input, e.g. 1 swap is [1, 2, 3, 4] => [1, 4, 3, 2].
+Partially-sorted means that we will sort only a percent of the input, e.g. 70% is [3, 4, 2, 1] => [2, 3, 4, 1].
+Second, we will cover many input sizes in a reasonable fashion (some algorithms are very slow).
+
+As I mentioned before, a timeout will exist, in which case a sort is excluded from further input sizes.
+I shall have graphs with x=input size and y=mean time instead of tables. There are too many cases to use tables.
+Variants will get subgraphs to compare to the baseline (typically best variant).
+So far these were integer numbers, but I will cover floats, string, and possibly basic structs too.
+
 [^1]: Ignoring the Powerbook since all kinds of devices are used in RAM shortages, the GHC version was 6.4.1, released September 19 2005.
 I did check what kind of mergesort GHC had in that version, and it was a simple bottom up solution without natural runs.
 Subsequent addition was natural runs, seemingly few major versions later.

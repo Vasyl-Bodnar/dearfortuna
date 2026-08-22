@@ -666,6 +666,8 @@ The very common case is that you get one of the best solutions in the tiniest am
 My results showcase that well.
 
 Anyway, had fun surpassing the DP solution, so I am satisfied with the results.
+If you want to take a look at the solutions or complain about my benchmark, you can find it [here](https://github.com/Vasyl-Bodnar/counting-bits-benchmark).
+
 Don't forget to have fun too.
 
 [^1]: Yes, the name has a fun funding story with research on the wonderful Bellman equations. Still a horrible name.

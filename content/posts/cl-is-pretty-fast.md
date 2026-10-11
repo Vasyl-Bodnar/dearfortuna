@@ -311,7 +311,7 @@ Looks so small and feels so optimized.
 The time of course did not change.
 
 So on this somber note, we have the final time of `4.2 seconds`.
-To compare, quick runs of the fastest SIMD C and non-explicit-SIMD C are `1.7 seconds` and `2.8 seconds` respectively.
+To compare, quick runs of the fastest SIMD C and non-explicit-SIMD C[^5] are `1.7 seconds` and `2.8 seconds` respectively.
 
 ### My Machine's Unfairness
 An interesting side note, but my C runs are faster than the website (where it was closer to 2.1 and 5 seconds), 
@@ -322,13 +322,77 @@ On my machine they were actually 1, 1.7, 8.5, with the exact same compiler flags
 Unless there was an SBCL regression between theirs and my version, hard to explain how such a ratio could occur.
 
 In the end we were able to get the C-SBCL ratio down to 2.5. 
-This result is still pretty good given that this is a dynamic Lisp language and not the portable assembler (for PDP-11).
+This result is still pretty good given that this is a dynamic Lisp language and not the portable assembler (even if for PDP-11).
 But quite a bit dissapointing that my solution for SBCL was still that much slower.
 
-[^1]: Some of those links seem to be dead at the momemnt, but you can download the zipped archive. 
+## Not Yet
+I would say that, except that we have yet to actually change the code all that much. 
+Yes, I replaced a lot of operations with SIMD and even changed the struct to a pure array.
+However, these might as well be cosmetic, the underlying operations and loops have not changed at all.
+
+One core issue, though still closer to a cosmetic one, is that we use linked lists for storing bodies.
+The original SBCL solution has a change comment where apparently vectors were done once but got removed for cleaner code purposes.
+Whether this implies that the performance difference was not significant I am not sure, but we can test it. 
+Though with a linked list this small, it will not be a huge gain, even inside a loop.
+
+The reason for not doing this from the start is that unlike my SIMD which involves combining operations, 
+this would involve rewriting a lot of parts that rely on `dolist` and other list-unique features.
+You can see this easily in the functions that I rewrote.
+
+Regardless, after changing the system to an array, what is the result? 8 seconds. 
+Ah sorry, forgot to add the types. The result is `4.2 seconds`. 
+Yeah, it might have had a slight impact since I do average and round these, but we are just not breaking through that number.
+
+I will not give up yet, let's see if there are any obvious optimizations in the `applyforces` and `advance` then.
+Well, turns out there are.
+```lisp
+(declaim (inline applyforces))
+(defun applyforces (a b dt)
+  (declare (type body a b) (type double-float dt))
+  (let* ((dp (f64.4- (vec-p a) (vec-p b)))
+         (distance (sqrt (f64.4-horizontal+ (f64.4* dp dp))))
+         (mag (/ dt (* distance distance distance))))
+    (declare (type double-float distance mag))
+    (let ((dpmag (f64.4* dp mag)))
+      (setf (vec-v a) (f64.4- (vec-v a) (f64.4* dpmag (mass b))))
+      (setf (vec-v b) (f64.4+ (vec-v b) (f64.4* dpmag (mass a))))))
+  nil)
+```
+In `applyforces`, reusing dp * mag calculation saves us a 0.1. 
+That is, we now have `4.1 seconds`. 
+That's great, but we definitely need more time savings.
+    
+### Don't Optimize?
+Thankfully, I found one more optimization that got my time down to impressive `3.7 seconds`.
+That's this line:
+```lisp
+(declaim (optimize (speed 3)(safety 0)(space 0)(debug 0)))
+```
+Now it already exists in the original code. 
+So what we do is actually just remove it. 
+This is quite weird.
+
+Note that this is the standard optimization command, in some ways it is similar to adding `-O3` as your compiler flag in GCC.
+I don't have much idea on how adding optimizations can hurt the time. I can only assume it might have to do with `sb-simd` or my setup.
+
+On further testing, it seems that restarting lisp to a fresh start without optimizations gives me 8+ seconds, 
+and I can then add these optimize flags to get it down to 3.7. 
+As I keep running it goes up to 4.1. Then as I remove it goes back down to 3.7 and stays there on average. 
+Quite weird indeed. 
+
+I am still running in my REPL environment without a proper compilation. 
+So I will have to check whether that's the issue now.
+
+[^1]: Some of those links seem to be dead at the moment, but you can download the zipped archive. 
 This is not the "true" spec, but closest you can get without a purchase or Big AI strategies.
-[^2]: When anyone tells you that a compiler is smarter than you, kindly remind them of SIMD and multi-threading.
-Just because a compiler can turn a seemingly complex loop into SIMD, replace a division with reciprocal multiplication or 
-[a pop-count trick with an actual pop-count instruction](http://localhost:1313/posts/counting-bits-speedily) does not mean it is omniscient and omnipotent in nearly all cases (just like that cool pop-count replacement was a mistake in the article).
+I swear I had a working online one, might have been a different link.
+[^2]: When anyone tells you that a compiler is smarter than you, kindly remind them that being wrong is not ok.
+Just because a compiler can turn a seemingly complex loop into SIMD, or replace a division with reciprocal multiplication 
+does not mean it is omniscient and omnipotent in nearly all cases. 
+[See my article for when a cool optimization is a failure](http://localhost:1313/posts/counting-bits-speedily).
 [^3]: Funny enough, my GCC version is identical 14.2.0, though possibly some different patches since this is WSL Debian whereas they use Ubuntu.
 [^4]: The function itself actually compiles to identical assembly, so this difference in performance likely has to do with changes that inlining brings.
+[^5]: In case you are wondering what a technical no-SIMD C would be like, it would take around 3.6 seconds by removing auto-vectorization and disabling AVX2. 
+Note that floating point operations are done using SIMD.
+One could disable SIMD completely, but generally any compiled language will use SIMD for floating point, often for SISD. 
+This includes SBCL, which generates SSE instructions for all floating point operations, though it does not auto-vectorize.

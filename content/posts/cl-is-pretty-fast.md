@@ -78,7 +78,8 @@ To quote the site, or at least whoever the site quotes:
 
 > ... a pretty solid study on the boredom of performance-oriented software engineers grouped by programming language.
 
-Regardless of the quote, to put a proper test to it, I would want to take a language that has a pretty "slow" non-SIMD solution and make it pretty fast with SIMD.
+Regardless of the quote, to put a proper test to it, 
+I would want to take a language that has a pretty "slow" non-SIMD solution and make it pretty fast with SIMD (and extra).
 And you might already know what language this will be.
 
 ## A Lisp with a Dream
@@ -373,15 +374,70 @@ So what we do is actually just remove it.
 This is quite weird.
 
 Note that this is the standard optimization command, in some ways it is similar to adding `-O3` as your compiler flag in GCC.
-I don't have much idea on how adding optimizations can hurt the time. I can only assume it might have to do with `sb-simd` or my setup.
+I don't have much idea on how adding optimizations can hurt the time. I can only assume it might have to do with `sb-simd` or my REPL setup.
 
 On further testing, it seems that restarting lisp to a fresh start without optimizations gives me 8+ seconds, 
 and I can then add these optimize flags to get it down to 3.7. 
 As I keep running it goes up to 4.1. Then as I remove it goes back down to 3.7 and stays there on average. 
+This is only the case when evaling and not when I compile-and-load (that is produce a .fasl and then load it).
 Quite weird indeed. 
 
-I am still running in my REPL environment without a proper compilation. 
-So I will have to check whether that's the issue now.
+I have yet to compile this SIMD version through their method, and I will do so, 
+but I don't believe it will much different from a compile-and-load really.
+
+Anyway, the time is thus `3.7 seconds`, so the ratio is actually 2.2, a lot nicer.
+I will use compile-and-load to report these now. 
+There is just one more optimization I want to try.
+
+### Less Vectors
+I have converted the bodies from structs, though still vectors underneath, to pure vectors. 
+I have converted the system from a list of vectors to a vector of vectors, to no performance benefit either.
+There is however one more trick, combining them, i.e. a single vector containing all the body values. 
+
+This change should improve caching and avoid an extra dereference from having a vector of vectors.
+Well, at least this is my hope. We have to actually see whether this has any impact. 
+The extra dereference happens in the `advance` which is not called as often as `applyforces`, though often enough to matter.
+For this I adapted a macro to simplyfy it. 
+
+Thus, we went from this:
+```lisp
+(defparameter *jupiter*
+  (make-body 4.84143144246472090d0
+             -1.16032004402742839d0
+             -1.03622044471123109d-1
+             (* 1.66007664274403694d-3 +days-per-year+)
+             (* 7.69901118419740425d-3 +days-per-year+)
+             (* -6.90460016972063023d-5  +days-per-year+)
+             (* 9.54791938424326609d-4 +solar-mass+)))
+;; etc.
+;; (system (list *sun* *jupiter* etc.))
+```
+
+To this:
+
+```lisp
+(defparameter *system*
+  (make-system
+   (sun 0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 0.0d0 +solar-mass+) ;; Sun is first in order
+   (jupiter 4.84143144246472090d0
+            -1.16032004402742839d0
+            -1.03622044471123109d-1
+            (* 1.66007664274403694d-3 +days-per-year+)
+            (* 7.69901118419740425d-3 +days-per-year+)
+            (* -6.90460016972063023d-5 +days-per-year+)
+            (* 9.54791938424326609d-4 +solar-mass+))
+;; etc.
+```
+Where names are purely cosmetic. 
+After that it was changing all cases of `(aref body j)` to `(aref system i j)` with some code changes needed.
+Support for multidimensional arrays is quite nice in SBCL when you need it.
+
+Unfortunately, as noble as this idea was, a failure it ended up. 
+Implementing this seems to have caused type issues or some other optimization hurdle as it ended up being slower.
+I have tried to fix this, but it does not seem to be that simple. 
+Maybe this is just theory vs practice, but I am sure there is a massaging trick that will allow me to match if not exceed the previous version.
+
+### Revelation
 
 [^1]: Some of those links seem to be dead at the moment, but you can download the zipped archive. 
 This is not the "true" spec, but closest you can get without a purchase or Big AI strategies.
@@ -395,4 +451,4 @@ does not mean it is omniscient and omnipotent in nearly all cases.
 [^5]: In case you are wondering what a technical no-SIMD C would be like, it would take around 3.6 seconds by removing auto-vectorization and disabling AVX2. 
 Note that floating point operations are done using SIMD.
 One could disable SIMD completely, but generally any compiled language will use SIMD for floating point, often for SISD. 
-This includes SBCL, which generates SSE instructions for all floating point operations, though it does not auto-vectorize.
+This includes SBCL, which generates SSE instructions for all floating point operations, even though it does not auto-vectorize.

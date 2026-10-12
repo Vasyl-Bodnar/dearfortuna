@@ -102,6 +102,12 @@ Elegant and simple, all planets are defined and the major functions of `offset-m
 To add SIMD, we can simply tweak those functions (and the one below them `applyforces`) and any necessary structures. 
 I will utilize a similar method to the top SIMD solutions.
 
+Before that I do have to mention the [Idiomatic Lisp and the nbody benchmark](https://www.stylewarning.com/posts/nbody), 
+by the author of [Coalton](https://coalton-lang.github.io).
+Now this does show SBCL with a small kernel macro lib matching C in n-body while looking quite lean, though it is a non-explicitly-SIMD C.
+This is different from what I will be doing, since I will be writing straight SIMD intrinsics inline and comparing to a C solution that does the same.
+With this cleared up, we shall proceed.
+
 Firstly, we do need to setup the environment. 
 My SBCL version is 2.5.2, theirs is 2.4.8. 
 This difference does not matter since all my comparisons will be relative to my numbers on my machine anyway.
@@ -435,9 +441,18 @@ Support for multidimensional arrays is quite nice in SBCL when you need it.
 Unfortunately, as noble as this idea was, a failure it ended up. 
 Implementing this seems to have caused type issues or some other optimization hurdle as it ended up being slower.
 I have tried to fix this, but it does not seem to be that simple. 
-Maybe this is just theory vs practice, but I am sure there is a massaging trick that will allow me to match if not exceed the previous version.
+Maybe this is just theory vs practice. 
+I believe there should be a way to fix this, but even with this I don't see us getting that much faster.
+I tried everything I could think of, but there is another path to take.
 
-### Revelation
+## "Inspiration"
+So far I have simply been adapting the original SBCL solution to SIMD and more vectors.
+This has provided us with large performance increases to the point where SBCL was only away from the best C solution by a factor of 2.2.
+Very impressive, especially since the most important optimizations were just replacing a few instructions with the vector ones.
+Of course I did look at the best C solution for an inspiration of how best to use SIMD. 
+However, it was just that, an inspiration. 
+This solution is not a Lisp copy of the C one. 
+What if we actually did that?
 
 [^1]: Some of those links seem to be dead at the moment, but you can download the zipped archive. 
 This is not the "true" spec, but closest you can get without a purchase or Big AI strategies.

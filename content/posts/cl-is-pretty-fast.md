@@ -443,16 +443,39 @@ Implementing this seems to have caused type issues or some other optimization hu
 I have tried to fix this, but it does not seem to be that simple. 
 Maybe this is just theory vs practice. 
 I believe there should be a way to fix this, but even with this I don't see us getting that much faster.
-I tried everything I could think of, but there is another path to take.
+
+I tried everything I could think of for this, and ran out of ideas for further optimization tricks. 
+But, there is yet another path to take.
 
 ## "Inspiration"
 So far I have simply been adapting the original SBCL solution to SIMD and more vectors.
 This has provided us with large performance increases to the point where SBCL was only away from the best C solution by a factor of 2.2.
 Very impressive, especially since the most important optimizations were just replacing a few instructions with the vector ones.
 Of course I did look at the best C solution for an inspiration of how best to use SIMD. 
-However, it was just that, an inspiration. 
+However, it was just that, an inspiration, only for adding a waste slot really. 
 This solution is not a Lisp copy of the C one. 
-What if we actually did that?
+But, what if we actually did that, learn from the enemy?
+
+Firstly, what does the C solution do differently, after all if it's already identical just in C, it would not help much.
+Well, it actually does a couple of things. 
+To begin, it does some manual loop unrolling to optimize some SIMD operations better.
+They actually use a `rsqrt`, and thus arrange some things differently.
+Typically, this would be an issue since there is no SIMD `rsqrt` for double floats. 
+However, they implemented one themselves by downcasting and then upcasting with fixes to keep accuracy.
+The C solution also makes sure to use stack memory at all time and reuse as much as possible, e.g. with pairs.
+It really is no wonder this is the fastest solution.
+
+Loop unrolling was an obvious one that I missed. 
+`rsqrt` is something I thought of, but failed to get good results.
+Though, the way they were able to do it feels a little bit like cheating[^6].
+The stack allocations are nice, though slightly more annoying to repeat.
+
+### Rolling
+This is the big one, so might as well start with it.
+Loop unrolling is typically done for two cases.
+Either you want more instructions between your branches to improve throughput, 
+or you have a way to combine instructions together, e.g. auto-vectorization.
+In our case, this provides SIMD over parts that could not be SIMD before, like `sqrt` (we are not using `rsqrt` yet).
 
 [^1]: Some of those links seem to be dead at the moment, but you can download the zipped archive. 
 This is not the "true" spec, but closest you can get without a purchase or Big AI strategies.
@@ -460,10 +483,11 @@ I swear I had a working online one, might have been a different link.
 [^2]: When anyone tells you that a compiler is smarter than you, kindly remind them that being wrong is not ok.
 Just because a compiler can turn a seemingly complex loop into SIMD, or replace a division with reciprocal multiplication 
 does not mean it is omniscient and omnipotent in nearly all cases. 
-[See my article for when a cool optimization is a failure](http://localhost:1313/posts/counting-bits-speedily).
+[See my article for when even a cool optimization is a failure](http://localhost:1313/posts/counting-bits-speedily).
 [^3]: Funny enough, my GCC version is identical 14.2.0, though possibly some different patches since this is WSL Debian whereas they use Ubuntu.
 [^4]: The function itself actually compiles to identical assembly, so this difference in performance likely has to do with changes that inlining brings.
 [^5]: In case you are wondering what a technical no-SIMD C would be like, it would take around 3.6 seconds by removing auto-vectorization and disabling AVX2. 
 Note that floating point operations are done using SIMD.
 One could disable SIMD completely, but generally any compiled language will use SIMD for floating point, often for SISD. 
 This includes SBCL, which generates SSE instructions for all floating point operations, even though it does not auto-vectorize.
+[^6]: There is no law that SIMD `rsqrt` for double-floats is forbidden, but using single-floats like this feels a little wrong, even if accuracy is fixed in post.

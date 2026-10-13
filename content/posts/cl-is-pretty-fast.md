@@ -462,7 +462,8 @@ To begin, it does some manual loop unrolling to optimize some SIMD operations be
 They actually use a `rsqrt`, and thus arrange some things differently.
 Typically, this would be an issue since there is no SIMD `rsqrt` for double floats. 
 However, they implemented one themselves by downcasting and then upcasting with fixes to keep accuracy.
-The C solution also makes sure to use stack memory at all time and reuse as much as possible, e.g. with pairs.
+The C solution also makes sure to use stack memory at all time and reuse as much as possible between operations, e.g. with pairs.
+The reuse part is important because e.g. in my solution a lot is still recalculated every time, even with SIMD.
 It really is no wonder this is the fastest solution.
 
 Loop unrolling was an obvious one that I missed. 
@@ -476,6 +477,13 @@ Loop unrolling is typically done for two cases.
 Either you want more instructions between your branches to improve throughput, 
 or you have a way to combine instructions together, e.g. auto-vectorization.
 In our case, this provides SIMD over parts that could not be SIMD before, like `sqrt` (we are not using `rsqrt` yet).
+
+Now one reason I did not recognize loop unrolling of this kind before is that we have a more complicated double loop which limits it.
+As an example the first iterations would involve `applyforces` of the sun and every other planet, 
+the second would involve the next planet and exclude the sun, and so on. 
+The issue of this is that while the first iteration can be combined, realistically it would only be the first and maybe the second iteration.
+So how does the C solution do it? Well, it splits calculations and reuses the results between them too.
+Unlike the Lisp solution which does `advance` `n`-times, this one actually puts the `n` loop inside, thus allowing these splits.
 
 [^1]: Some of those links seem to be dead at the moment, but you can download the zipped archive. 
 This is not the "true" spec, but closest you can get without a purchase or Big AI strategies.

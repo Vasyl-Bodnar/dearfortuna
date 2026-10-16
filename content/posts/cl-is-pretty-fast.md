@@ -436,16 +436,22 @@ To this:
 ```
 Where names are purely cosmetic. 
 After that it was changing all cases of `(aref body j)` to `(aref system i j)` with some code changes needed.
-Support for multidimensional arrays is quite nice in SBCL when you need it.
+Support for multidimensional arrays seems to be quite nice in SBCL when you need it.
 
 Unfortunately, as noble as this idea was, a failure it ended up. 
 Implementing this seems to have caused type issues or some other optimization hurdle as it ended up being slower.
+The most likely case is extra boxing that could be avoided.
 I have tried to fix this, but it does not seem to be that simple. 
-Maybe this is just theory vs practice. 
-I believe there should be a way to fix this, but even with this I don't see us getting that much faster.
 
-I tried everything I could think of for this, and ran out of ideas for further optimization tricks. 
-But, there is yet another path to take.
+And indeed, after looking around online, multidimensional arrays actually have an indirection. 
+That is, there is an extra pointer to the underlying vector, thus slow-downs.
+Now the resources for this are older, so I did not think this would still be an issue, but it appears to be the case.
+This is surprising to me because macros make it quite easy to simulate a 2D array from a 1D array e.g..
+This is what I ended up doing with some extra optimizations. 
+Unfortunately, even this did not seem to achieve any noticeable improvement to performance.
+
+Well, I tried everything I could think of for this, and ran out of ideas for further optimization tricks. 
+But, there is yet another path to take for what I believe are easier wins.
 
 ## "Inspiration"
 So far I have simply been adapting the original SBCL solution to SIMD and more vectors.
@@ -460,7 +466,7 @@ Firstly, what does the C solution do differently, after all if it's already iden
 Well, it actually does a couple of things. 
 To begin, it does some manual loop unrolling to optimize some SIMD operations better.
 They actually use a `rsqrt`, and thus arrange some things differently.
-Typically, this would be an issue since there is no SIMD `rsqrt` for double floats. 
+Typically, this would be an issue since there is no SIMD `rsqrt` for double floats on ivybridge/AVX2. 
 However, they implemented one themselves by downcasting and then upcasting with fixes to keep accuracy.
 The C solution also makes sure to use stack memory at all time and reuse as much as possible between operations, e.g. with pairs.
 The reuse part is important because e.g. in my solution a lot is still recalculated every time, even with SIMD.
@@ -478,7 +484,7 @@ Either you want more instructions between your branches to improve throughput,
 or you have a way to combine instructions together, e.g. auto-vectorization.
 In our case, this provides SIMD over parts that could not be SIMD before, like `sqrt` (we are not using `rsqrt` yet).
 
-Now one reason I did not recognize loop unrolling of this kind before is that we have a more complicated double loop which limits it.
+Now one reason I did not recognize loop unrolling of this kind before is that we have a more complicated double (triple really) loop which limits it.
 As an example the first iterations would involve `applyforces` of the sun and every other planet, 
 the second would involve the next planet and exclude the sun, and so on. 
 The issue of this is that while the first iteration can be combined, realistically it would only be the first and maybe the second iteration.
@@ -491,7 +497,7 @@ I swear I had a working online one, might have been a different link.
 [^2]: When anyone tells you that a compiler is smarter than you, kindly remind them that being wrong is not ok.
 Just because a compiler can turn a seemingly complex loop into SIMD, or replace a division with reciprocal multiplication 
 does not mean it is omniscient and omnipotent in nearly all cases. 
-[See my article for when even a cool optimization is a failure](http://localhost:1313/posts/counting-bits-speedily).
+[See my article for when even a cool optimization is a failure that my manually lightly optimized version beats](http://localhost:1313/posts/counting-bits-speedily).
 [^3]: Funny enough, my GCC version is identical 14.2.0, though possibly some different patches since this is WSL Debian whereas they use Ubuntu.
 [^4]: The function itself actually compiles to identical assembly, so this difference in performance likely has to do with changes that inlining brings.
 [^5]: In case you are wondering what a technical no-SIMD C would be like, it would take around 3.6 seconds by removing auto-vectorization and disabling AVX2. 
@@ -499,3 +505,4 @@ Note that floating point operations are done using SIMD.
 One could disable SIMD completely, but generally any compiled language will use SIMD for floating point, often for SISD. 
 This includes SBCL, which generates SSE instructions for all floating point operations, even though it does not auto-vectorize.
 [^6]: There is no law that SIMD `rsqrt` for double-floats is forbidden, but using single-floats like this feels a little wrong, even if accuracy is fixed in post.
+Still, if they do it, then we might as well.

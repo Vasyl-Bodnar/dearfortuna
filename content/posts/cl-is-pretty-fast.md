@@ -443,18 +443,22 @@ Implementing this seems to have caused type issues or some other optimization hu
 The most likely case is extra boxing that could be avoided.
 I have tried to fix this, but it does not seem to be that simple. 
 
-And indeed, after looking around online, multidimensional arrays actually have an indirection. 
-That is, there is an extra pointer to the underlying vector, thus slow-downs.
-Now the resources for this are older, so I did not think this would still be an issue, but it appears to be the case.
-This is surprising to me because macros make it quite easy to simulate a 2D array from a 1D array e.g..
-This is what I ended up doing with some extra optimizations. 
-Unfortunately, even this did not seem to achieve any noticeable improvement to performance.
+And indeed, after looking around online, multidimensional arrays actually has an indirection. 
+For some reason, there is an extra pointer to the underlying vector, thus slow-downs.
+This ends up being slower than our original vector of vectors because we also have extra index calculations on top of that. 
+Calculating indices rarely matters, but don't forget that we run this loop a billion times.
 
-Well, I tried everything I could think of for this, and ran out of ideas for further optimization tricks. 
+Now the resources for this indirection are older, so I did not think this would still be an issue, but it appears to be the case.
+This is surprising to me[^6] because macros make it quite easy to simulate a 2D array from a 1D array e.g..
+I ended up doing that with some extra optimizations to avoid some of the extra index work introduced. 
+Unfortunately, even this 1D optimization did not seem to achieve any noticeable improvement to performance over the base 3.7 seconds.
+Maybe if combined with some other optimizations, it can be more useful.
+
+Anyway, I tried everything I could think of for this, and ran out of ideas for further optimization tricks. 
 But, there is yet another path to take for what I believe are easier wins.
 
 ## "Inspiration"
-So far I have simply been adapting the original SBCL solution to SIMD and more vectors.
+So far I have simply been adapting the original SBCL solution to SIMD and vectors.
 This has provided us with large performance increases to the point where SBCL was only away from the best C solution by a factor of 2.2.
 Very impressive, especially since the most important optimizations were just replacing a few instructions with the vector ones.
 Of course I did look at the best C solution for an inspiration of how best to use SIMD. 
@@ -462,26 +466,26 @@ However, it was just that, an inspiration, only for adding a waste slot really.
 This solution is not a Lisp copy of the C one. 
 But, what if we actually did that, learn from the enemy?
 
-Firstly, what does the C solution do differently, after all if it's already identical just in C, it would not help much.
+Firstly, what does the C solution do differently, after all if it's already identical to Lisp, it would not help much.
 Well, it actually does a couple of things. 
 To begin, it does some manual loop unrolling to optimize some SIMD operations better.
 They actually use a `rsqrt`, and thus arrange some things differently.
 Typically, this would be an issue since there is no SIMD `rsqrt` for double floats on ivybridge/AVX2. 
 However, they implemented one themselves by downcasting and then upcasting with fixes to keep accuracy.
 The C solution also makes sure to use stack memory at all time and reuse as much as possible between operations, e.g. with pairs.
-The reuse part is important because e.g. in my solution a lot is still recalculated every time, even with SIMD.
+The reuse part is important because e.g. in my solution, a lot is still recalculated every time, even with SIMD.
 It really is no wonder this is the fastest solution.
 
-Loop unrolling was an obvious one that I missed. 
+Loop unrolling and more reuse were the obvious ones that I missed. 
 `rsqrt` is something I thought of, but failed to get good results.
-Though, the way they were able to do it feels a little bit like cheating[^6].
+Though, the way they were able to do it feels a little bit like cheating[^7].
 The stack allocations are nice, though slightly more annoying to repeat.
 
 ### Rolling
 This is the big one, so might as well start with it.
 Loop unrolling is typically done for two cases.
 Either you want more instructions between your branches to improve throughput, 
-or you have a way to combine instructions together, e.g. auto-vectorization.
+or you have a way to combine some instructions together, e.g. SIMD vectorization.
 In our case, this provides SIMD over parts that could not be SIMD before, like `sqrt` (we are not using `rsqrt` yet).
 
 Now one reason I did not recognize loop unrolling of this kind before is that we have a more complicated double (triple really) loop which limits it.
@@ -504,5 +508,8 @@ does not mean it is omniscient and omnipotent in nearly all cases.
 Note that floating point operations are done using SIMD.
 One could disable SIMD completely, but generally any compiled language will use SIMD for floating point, often for SISD. 
 This includes SBCL, which generates SSE instructions for all floating point operations, even though it does not auto-vectorize.
-[^6]: There is no law that SIMD `rsqrt` for double-floats is forbidden, but using single-floats like this feels a little wrong, even if accuracy is fixed in post.
+[^6]: The project I mentioned actually used 2D array a lot, this means that I have been putting a lot of performance on the table there.
+I trusted that it was a simple 1D underneath with no tricks or indirections.
+However, this also means that since I was already quite happy with the solutions, it will only get better when I optimize that.
+[^7]: There is no law that SIMD `rsqrt` for double-floats is forbidden, but using single-floats like this feels a little wrong, even if accuracy is fixed in post.
 Still, if they do it, then we might as well.
